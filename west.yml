@@ -35,6 +35,8 @@ manifest:
       url-base: https://github.com/boschsensortec
     - name: eembc
       url-base: https://github.com/eembc
+    - name: erdem
+      url-base: https://github.com/erdemsimsek
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -128,7 +130,8 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: 0bf6ef9a35f19949071db658a84b3a3f0f99ef99
+      remote: erdem
+      revision: add-support-for-mcuboot-to-nrf7120
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR
