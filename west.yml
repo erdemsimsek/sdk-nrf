@@ -57,6 +57,13 @@ manifest:
   # For 'userdata' fields in the projects area, please refer to:
   # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/dm_code_base.html
   projects:
+
+
+    - name: devacademy-ncsinter
+      path: nrf/samples/devacademy/ncs-inter
+      revision: porting-l9e1-to-nrf7120
+      url: https://github.com/erdemsimsek/ncs-inter.git
+
     # The Zephyr RTOS fork in the NCS, along with the subset of its
     # modules which NCS imports directly.
     #
