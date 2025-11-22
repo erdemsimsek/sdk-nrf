@@ -128,6 +128,7 @@ void process_packet(hpf_gpio_data_packet_t *packet)
 	}
 	case HPF_GPIO_PIN_TOGGLE: {
 		irq_arg = packet->pin;
+		printk("FLPR HPF GPIO | toggle command\r\n");
 		nrf_vpr_clic_int_pending_set(NRF_VPRCLIC, VEVIF_IRQN(HRT_VEVIF_IDX_GPIO_TOGGLE));
 		break;
 	}
@@ -160,6 +161,8 @@ __attribute__ ((interrupt)) void hrt_handler_toggle_bits(void)
 int main(void)
 {
 	int ret = 0;
+
+	printk("***FLPR HPF GPIO Booted***\r\n");
 
 	ret = backend_init(process_packet);
 	if (ret < 0) {
