@@ -10,12 +10,12 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			sram_rx: memory@2007f000 {
-				reg = <0x2007f000 0x0800>;
+			sram_rx: memory@20080000 {
+				reg = <0x20080000 0x8000>;
 			};
 
-			sram_tx: memory@2007f800 {
-				reg = <0x2007f800 0x0800>;
+			sram_tx: memory@20088000 {
+				reg = <0x20088000 0x8000>;
 			};
 		};
 	};
@@ -23,9 +23,10 @@
 	ipc {
 		ipc0: ipc0 {
 			compatible = "zephyr,ipc-icmsg";
+			dcache-alignment = <32>;
 			tx-region = <&sram_tx>;
 			rx-region = <&sram_rx>;
-			mboxes = <&cpuapp_vevif_rx 20>, <&cpuapp_vevif_tx 16>;
+			mboxes = <&cpuapp_vevif_rx 20>, <&cpuapp_vevif_tx 21>;
 			mbox-names = "rx", "tx";
 			status = "okay";
 		};
