@@ -14,7 +14,6 @@ common:
     regex:
       - "LED state: ON"
       - "LED state: OFF"
-
 tests:
   nrf.extended.sample.basic.blinky:
     platform_allow:
@@ -28,6 +27,7 @@ tests:
     platform_allow:
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54lm20dk/nrf54lm20a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
     extra_args:
@@ -36,11 +36,14 @@ tests:
       - SB_CONFIG_HPF_GPIO_BACKEND_ICMSG=y
       - SB_CONFIG_PARTITION_MANAGER=n
       - FILE_SUFFIX=hpf_gpio
+      - platform:nrf54l15dk/nrf54l15/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf54l15dk_nrf54l15_cpuapp_hpf_gpio.overlay"
+      - platform:nrf7120dk/nrf7120/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf7120dk_nrf7120_cpuapp_hpf_gpio.overlay"
 
   nrf.extended.sample.basic.blinky.hpf.gpio.mbox:
     platform_allow:
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54lm20dk/nrf54lm20a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
     extra_args:
@@ -49,11 +52,14 @@ tests:
       - SB_CONFIG_HPF_GPIO_BACKEND_MBOX=y
       - SB_CONFIG_PARTITION_MANAGER=n
       - FILE_SUFFIX=hpf_gpio
+      - platform:nrf54l15dk/nrf54l15/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf54l15dk_nrf54l15_cpuapp_hpf_gpio.overlay"
+      - platform:nrf7120dk/nrf7120/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf7120dk_nrf7120_cpuapp_hpf_gpio.overlay"
 
   nrf.extended.sample.basic.blinky.hpf.gpio.icbmsg:
     platform_allow:
       - nrf54l15dk/nrf54l15/cpuapp
       - nrf54lm20dk/nrf54lm20a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
     extra_args:
@@ -62,3 +68,5 @@ tests:
       - SB_CONFIG_HPF_GPIO_BACKEND_ICBMSG=y
       - SB_CONFIG_PARTITION_MANAGER=n
       - FILE_SUFFIX=hpf_gpio
+      - platform:nrf54l15dk/nrf54l15/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf54l15dk_nrf54l15_cpuapp_hpf_gpio.overlay"
+      - platform:nrf7120dk/nrf7120/cpuapp:"EXTRA_DTC_OVERLAY_FILE=./boards/nrf7120dk_nrf7120_cpuapp_hpf_gpio.overlay"
