@@ -34,3 +34,15 @@
 &cpuflpr_code_partition {
 	reg = <0x0 DT_SIZE_K(116)>;
 };
+
+/ {
+	chosen {
+		zephyr,sram = &ram01_sram;
+	};
+};
+
+&ram01_sram {
+	status = "okay";
+	reg = <0x20080000 DT_SIZE_K(116)>;
+	ranges = <0x0 0x20080000 DT_SIZE_K(116)>;
+};
