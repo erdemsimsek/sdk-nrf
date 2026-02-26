@@ -83,6 +83,10 @@ struct otperf_results {
 	uint32_t nb_packets_errors;   /**< Number of packet errors */
 };
 
+struct otperf_extra_results {
+	uint32_t nb_packets_skipped;
+};
+
 /**
  * @brief Otperf callback function used for asynchronous operations.
  *
@@ -99,10 +103,12 @@ typedef void (*otperf_callback)(enum otperf_status status, struct otperf_results
  *
  * @param param Upload parameters.
  * @param result Session results.
+ * @param extra_result Additional information not handled by IPerf/zperf
  *
  * @return 0 if session completed successfully, a negative error code otherwise.
  */
-int otperf_udp_upload(const struct otperf_upload_params *param, struct otperf_results *result);
+int otperf_udp_upload(const struct otperf_upload_params *param, struct otperf_results *result,
+		      struct otperf_extra_results *extra_result);
 
 /**
  * @brief Start UDP server.

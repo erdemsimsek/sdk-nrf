@@ -263,7 +263,8 @@ static int cmd_udp_download(const struct shell *sh, size_t argc, char *argv[])
 
 #endif
 
-static void shell_udp_upload_print_stats(const struct shell *sh, struct otperf_results *results)
+static void shell_udp_upload_print_stats(const struct shell *sh, struct otperf_results *results,
+					 struct otperf_extra_results *extra_results)
 {
 	uint64_t rate_in_kbps, client_rate_in_kbps;
 
@@ -302,6 +303,8 @@ static void shell_udp_upload_print_stats(const struct shell *sh, struct otperf_r
 	shell_fprintf(sh, SHELL_NORMAL, "Num packets out order:\t%u\n",
 		      results->nb_packets_outorder);
 	shell_fprintf(sh, SHELL_NORMAL, "Num packets lost:\t%u\n", results->nb_packets_lost);
+	shell_fprintf(sh, SHELL_NORMAL, "Num packets skipped:\t\t%u\n",
+		      extra_results->nb_packets_skipped);
 
 	shell_fprintf(sh, SHELL_NORMAL, "Jitter:\t\t\t");
 	print_number(sh, results->jitter_in_us, TIME_US, TIME_US_UNIT);
@@ -379,6 +382,7 @@ static void send_ping(const struct shell *sh, struct otIp6Address *addr, int tim
 static int execute_upload(const struct shell *sh, const struct otperf_upload_params *param)
 {
 	struct otperf_results results = {0};
+	struct otperf_extra_results extra_results = {0};
 	int ret;
 
 	shell_fprintf(sh, SHELL_NORMAL, "Duration:\t");
@@ -411,13 +415,13 @@ static int execute_upload(const struct shell *sh, const struct otperf_upload_par
 			      (unsigned int)packet_duration);
 	}
 
-	ret = otperf_udp_upload(param, &results);
+	ret = otperf_udp_upload(param, &results, &extra_results);
 	if (ret < 0) {
 		shell_fprintf(sh, SHELL_ERROR, "UDP upload failed (%d)\n", ret);
 		return ret;
 	}
 
-	shell_udp_upload_print_stats(sh, &results);
+	shell_udp_upload_print_stats(sh, &results, &extra_results);
 
 	return 0;
 }

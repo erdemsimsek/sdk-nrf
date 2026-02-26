@@ -156,7 +156,7 @@ static void ot_uploader_udp_receive_cb(void *aContext, otMessage *aMessage,
 }
 
 static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *param,
-		      struct otperf_results *results)
+		      struct otperf_results *results, struct otperf_extra_results *extra_results)
 {
 	size_t header_size =
 		sizeof(struct otperf_udp_datagram) + sizeof(struct otperf_client_hdr_v1);
@@ -166,6 +166,7 @@ static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *para
 	uint32_t packet_duration_us = otperf_packet_duration(packet_size, rate_in_kbps);
 	uint32_t packet_duration_ticks = k_us_to_ticks_ceil32(packet_duration_us);
 	uint32_t nb_packets = 0U;
+	uint32_t nb_packets_transmitted = 0U;
 	uint64_t usecs64;
 	int64_t start_time, end_time;
 	otInstance *instance = openthread_get_default_instance();
@@ -254,6 +255,7 @@ static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *para
 			otMessageFree(message);
 			continue;
 		}
+		nb_packets_transmitted++;
 	}
 
 	end_time = k_uptime_ticks();
@@ -265,11 +267,13 @@ static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *para
 	results->nb_packets_sent = nb_packets;
 	results->client_time_in_us = k_ticks_to_us_ceil64(end_time - start_time);
 	results->packet_size = packet_size;
+	extra_results->nb_packets_skipped = nb_packets - nb_packets_transmitted;
 
 	return 0;
 }
 
-int otperf_udp_upload(const struct otperf_upload_params *param, struct otperf_results *result)
+int otperf_udp_upload(const struct otperf_upload_params *param, struct otperf_results *result,
+		      struct otperf_extra_results *extra_results)
 {
 	otInstance *instance = openthread_get_default_instance();
 
@@ -286,7 +290,7 @@ int otperf_udp_upload(const struct otperf_upload_params *param, struct otperf_re
 		return -EIO;
 	}
 
-	ret = udp_upload(&sock, param, result);
+	ret = udp_upload(&sock, param, result, extra_results);
 
 	otUdpClose(instance, &sock);
 
