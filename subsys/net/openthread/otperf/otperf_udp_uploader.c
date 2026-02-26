@@ -198,7 +198,6 @@ static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *para
 		uint32_t secs, usecs;
 		int64_t current_loop_time;
 
-		nb_packets++;
 		int64_t ticks_to_wait = next_scheduled_tick - k_uptime_ticks();
 
 		if (ticks_to_wait > 0) {
@@ -221,6 +220,7 @@ static int udp_upload(otUdpSocket *sock, const struct otperf_upload_params *para
 		datagram->id = sys_cpu_to_be32(nb_packets);
 		datagram->tv_sec = sys_cpu_to_be32(secs);
 		datagram->tv_usec = sys_cpu_to_be32(usecs);
+		nb_packets++;
 
 		hdr = (struct otperf_client_hdr_v1 *)(sample_packet + sizeof(*datagram));
 		hdr->flags = 0;

@@ -133,6 +133,8 @@ static void udp_received(otUdpSocket *sock, const struct otSockAddr *addr, uint8
 			otperf_reset_session_stats(session);
 			session->state = STATE_ONGOING;
 			session->start_time = time;
+			session->counter = 1;
+			session->length = datalen;
 
 			/* Start a new session! */
 			if (udp_session_cb != NULL) {
