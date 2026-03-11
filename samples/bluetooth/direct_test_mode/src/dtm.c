@@ -19,9 +19,10 @@
 #include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/clock_control/nrf_clock_control.h>
 #include <zephyr/sys/__assert.h>
-#if !(defined(CONFIG_SOC_SERIES_NRF54H) || defined(CONFIG_SOC_SERIES_NRF54L))
+#if !(defined(CONFIG_SOC_SERIES_NRF54H) || defined(CONFIG_SOC_SERIES_NRF54L) || \
+	defined(CONFIG_SOC_SERIES_NRF71))
 #include <hal/nrf_nvmc.h>
-#endif /* !defined(CONFIG_SOC_SERIES_NRF54H) || defined(CONFIG_SOC_SERIES_NRF54L) */
+#endif /* !defined(CONFIG_SOC_SERIES_NRF54H) && !defined(CONFIG_SOC_SERIES_NRF54L) && !defined(CONFIG_SOC_SERIES_NRF71) */
 
 #include <hal/nrf_egu.h>
 #include <hal/nrf_radio.h>
@@ -55,7 +56,7 @@
 	#define DTM_EGU                           NRF_EGU020
 	#define DTM_RADIO_SHORT_READY_START_MASK  NRF_RADIO_SHORT_READY_START_MASK
 	#define DTM_RADIO_SHORT_END_DISABLE_MASK  NRF_RADIO_SHORT_PHYEND_DISABLE_MASK
-#elif defined(CONFIG_SOC_SERIES_NRF54L)
+#elif defined(CONFIG_SOC_SERIES_NRF54L) || defined(CONFIG_SOC_SERIES_NRF71)
 	#define DEFAULT_TIMER_INSTANCE            10
 	#define RADIO_IRQn                        RADIO_0_IRQn
 	#define DTM_EGU                           NRF_EGU10
