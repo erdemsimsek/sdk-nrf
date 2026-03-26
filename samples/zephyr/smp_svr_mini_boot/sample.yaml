@@ -41,3 +41,22 @@ tests:
       - CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_IMAGE_ANY=y
     platform_allow:
       - nrf54ls05dk/nrf54ls05b/cpuapp
+  sample.smp_svr_mini_boot.nrf7120:
+    extra_args:
+      - FILE_SUFFIX="direct_xip"
+      - SB_CONFIG_MCUBOOT_MODE_DIRECT_XIP=y
+      - SB_CONFIG_PARTITION_MANAGER=n
+    platform_allow:
+      - nrf7120dk/nrf7120/cpuapp
+    integration_platforms:
+      - nrf7120dk/nrf7120/cpuapp
+  sample.smp_svr_mini_boot.swap_move.nrf7120:
+    extra_args:
+      - SB_CONFIG_MCUBOOT_MODE_SWAP_USING_MOVE=y
+      - SB_CONFIG_PARTITION_MANAGER=n
+    extra_configs:
+      - CONFIG_MCUMGR_GRP_IMG_ALLOW_CONFIRM_NON_ACTIVE_IMAGE_ANY=y
+    platform_allow:
+      - nrf7120dk/nrf7120/cpuapp
+    integration_platforms:
+      - nrf7120dk/nrf7120/cpuapp
