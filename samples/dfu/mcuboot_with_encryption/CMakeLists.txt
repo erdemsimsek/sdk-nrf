@@ -12,4 +12,5 @@ project(smp_svr)
 # that is being used for demonstrating MCUboot with image encryption
 # and DFU of encrypted images.
 target_sources(app PRIVATE ${ZEPHYR_BASE}/samples/subsys/mgmt/mcumgr/smp_svr/src/main.c)
-target_sources(app PRIVATE ${ZEPHYR_BASE}/samples/subsys/mgmt/mcumgr/smp_svr/src/bluetooth.c)
+target_sources_ifdef(CONFIG_MCUMGR_TRANSPORT_BT app PRIVATE
+		     ${ZEPHYR_BASE}/samples/subsys/mgmt/mcumgr/smp_svr/src/bluetooth.c)
