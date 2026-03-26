@@ -6,7 +6,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#if defined(CONFIG_BT)
 #include <zephyr/bluetooth/bluetooth.h>
+#endif
 #include <bootutil/bootutil_public.h>
 #include <bootutil/boot_request.h>
 
@@ -65,7 +67,12 @@ K_THREAD_STACK_DEFINE(status_leds_thread_stack_area, STATUS_LEDS_THREAD_STACK_SI
  */
 static bool radio_domain_healthy(void)
 {
+#if defined(CONFIG_BT)
 	return bt_is_ready();
+#else
+	/* UART-only builds do not initialize Bluetooth. */
+	return true;
+#endif
 }
 
 /** @brief Application firmware self test
