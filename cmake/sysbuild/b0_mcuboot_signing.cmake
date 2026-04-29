@@ -198,8 +198,8 @@ if(SB_CONFIG_BOOTLOADER_MCUBOOT)
     else()
       # The same DTS is used for all images, so the application selection does not
       # matter here, so we just use the mcuboot
-      dt_partition_addr(s0_partition_address LABEL "s0_partition" TARGET mcuboot ABSOLUTE REQUIRED)
-      dt_partition_addr(s1_partition_address LABEL "s1_partition" TARGET mcuboot ABSOLUTE REQUIRED)
+      dt_partition_addr(s0_partition_address LABEL "slot0_partition" TARGET mcuboot ABSOLUTE REQUIRED)
+      dt_partition_addr(s1_partition_address LABEL "slot1_partition" TARGET mcuboot ABSOLUTE REQUIRED)
     endif()
 
     # Signing the MCUboot image, secondary stage bootloader, that will be running from S1 slot.
