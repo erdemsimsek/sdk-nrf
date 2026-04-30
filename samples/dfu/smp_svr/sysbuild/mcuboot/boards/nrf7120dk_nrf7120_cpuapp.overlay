@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/ {
+	chosen {
+		/* Ensure MCUboot links to the boot partition at 0x0. */
+		zephyr,code-partition = &boot_partition;
+	};
+};
