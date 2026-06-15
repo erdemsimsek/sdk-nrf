@@ -1,0 +1,17 @@
+sample:
+  name: nRF7120 Wi-Fi patch DFU
+  description: >
+    Proof of concept: update the Wi-Fi LMAC/UMAC ROM patches as a separate
+    MCUboot image (image 1) via serial DFU, independently of the application.
+common:
+  sysbuild: true
+  platform_allow:
+    - nrf7120dk/nrf7120/cpuapp
+  build_only: true
+tests:
+  sample.dfu.wifi_patch_dfu:
+    tags:
+      - dfu
+      - ci_samples_dfu
+    integration_platforms:
+      - nrf7120dk/nrf7120/cpuapp

@@ -1,0 +1,83 @@
+/*
+ * Copyright (c) 2026 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/*
+ * Two-image MCUboot layout for the Wi-Fi patch DFU PoC.
+ *
+ *   image 0 (application)  : slot0_partition (primary) / slot1_partition (secondary)
+ *   image 1 (Wi-Fi patch)  : slot2_partition (primary) / slot3_partition (secondary)
+ *
+ * MCUboot maps slotN_partition -> image (N/2), slot (N%2). It validates and
+ * swaps image 1 but never boots it; the application calls into it.
+ *
+ * The image-1 primary slot holds one signed blob that internally carries two
+ * sub-applications (LMAC, UMAC) at 4 KiB-aligned origins, mirroring the
+ * proposed nRF7120 Wi-Fi patch architecture:
+ *
+ *   slot2 base 0x3D2000
+ *     + 0x0800  MCUboot header (CONFIG_ROM_START_OFFSET on nRF7120)
+ *     0x3D2800  LMAC sub-application  (wifi_lmac_patch_partition)
+ *     0x3D6800  UMAC sub-application  (wifi_umac_patch_partition)
+ *
+ * The LMAC/UMAC nodes overlap slot2 by design (they describe regions inside the
+ * patch image); the app reads their base via DT_REG_ADDR to locate each entry.
+ */
+
+&cpuapp_mram {
+	/delete-node/ partitions;
+
+	partitions {
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			compatible = "zephyr,mapped-partition";
+			label = "mcuboot";
+			reg = <0x00000000 DT_SIZE_K(64)>;
+		};
+
+		slot0_partition: partition@10000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-0";
+			reg = <0x00010000 DT_SIZE_K(1924)>;
+		};
+
+		slot1_partition: partition@1f1000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-1";
+			reg = <0x001f1000 DT_SIZE_K(1924)>;
+		};
+
+		slot2_partition: partition@3d2000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-2";
+			reg = <0x003d2000 DT_SIZE_K(64)>;
+		};
+
+		wifi_lmac_patch_partition: partition@3d2800 {
+			compatible = "zephyr,mapped-partition";
+			reg = <0x003d2800 DT_SIZE_K(16)>;
+		};
+
+		wifi_umac_patch_partition: partition@3d6800 {
+			compatible = "zephyr,mapped-partition";
+			reg = <0x003d6800 DT_SIZE_K(16)>;
+		};
+
+		slot3_partition: partition@3e2000 {
+			compatible = "zephyr,mapped-partition";
+			label = "image-3";
+			reg = <0x003e2000 DT_SIZE_K(64)>;
+		};
+
+		storage_partition: partition@3f2000 {
+			compatible = "zephyr,mapped-partition";
+			label = "storage";
+			reg = <0x003f2000 DT_SIZE_K(36)>;
+		};
+	};
+};
