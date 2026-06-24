@@ -23,7 +23,7 @@ manifest:
     # Third-party repository sources:
     - name: zephyrproject
       #url-base: https://github.com/zephyrproject-rtos
-      url-base: https://github.com/erdemsimsek/sdk-zephyr
+      url-base: https://github.com/erdemsimsek
     - name: throwtheswitch
       url-base: https://github.com/ThrowTheSwitch
     - name: dragoon
@@ -66,6 +66,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
+      remote: zephyrproject
       revision: poc-ram-retention-in-tfm-for-nrf7120
       import:
         # In addition to the zephyr repository itself, NCS also
