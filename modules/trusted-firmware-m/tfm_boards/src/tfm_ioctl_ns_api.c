@@ -108,3 +108,77 @@ int tfm_platform_ns_fault_set_handler(struct tfm_ns_fault_service_handler_contex
 
 	return status2err(ret, out.result);
 }
+
+static int ram_ctrl_set(enum tfm_ram_ctrl_op op, uintptr_t addr, size_t len, bool on)
+{
+	enum tfm_platform_err_t ret;
+	psa_invec in_vec;
+	psa_outvec out_vec;
+	struct tfm_ram_ctrl_args_t args;
+	struct tfm_ram_ctrl_out_t out;
+
+	in_vec.base = (const void *)&args;
+	in_vec.len = sizeof(args);
+
+	out_vec.base = (void *)&out;
+	out_vec.len = sizeof(out);
+
+	args.op = (uint32_t)op;
+	args.addr = (uint32_t)addr;
+	args.len = (uint32_t)len;
+	args.on = (uint32_t)on;
+
+	ret = tfm_platform_ioctl(TFM_PLATFORM_IOCTL_RAM_CTRL, &in_vec, &out_vec);
+
+	return status2err(ret, out.result);
+}
+
+int nrf_ram_ctrl_svc_power_set(uintptr_t addr, size_t len, bool on)
+{
+	return ram_ctrl_set(TFM_RAM_CTRL_OP_POWER, addr, len, on);
+}
+
+int nrf_ram_ctrl_svc_retention_set(uintptr_t addr, size_t len, bool on)
+{
+	return ram_ctrl_set(TFM_RAM_CTRL_OP_RETAIN, addr, len, on);
+}
+
+int nrf_ram_ctrl_svc_dump(uint32_t *control, uint32_t *ret, uint32_t *ret2,
+			  uint32_t *ret_planned)
+{
+	enum tfm_platform_err_t status;
+	psa_invec in_vec;
+	psa_outvec out_vec;
+	struct tfm_ram_ctrl_args_t args;
+	struct tfm_ram_ctrl_out_t out = {0};
+	int err;
+
+	in_vec.base = (const void *)&args;
+	in_vec.len = sizeof(args);
+	out_vec.base = (void *)&out;
+	out_vec.len = sizeof(out);
+
+	args.op = (uint32_t)TFM_RAM_CTRL_OP_DUMP;
+	args.addr = 0;
+	args.len = 0;
+	args.on = 0;
+
+	status = tfm_platform_ioctl(TFM_PLATFORM_IOCTL_RAM_CTRL, &in_vec, &out_vec);
+	err = status2err(status, out.result);
+	if (err == 0) {
+		if (control != NULL) {
+			*control = out.control;
+		}
+		if (ret != NULL) {
+			*ret = out.ret;
+		}
+		if (ret2 != NULL) {
+			*ret2 = out.ret2;
+		}
+		if (ret_planned != NULL) {
+			*ret_planned = out.ret_planned;
+		}
+	}
+
+	return err;
+}

@@ -20,6 +20,8 @@
 
 #include <limits.h>
 #include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 #include <tfm_platform_api.h>
 #include <hal/nrf_gpio.h>
 
@@ -41,6 +43,7 @@ extern "C" {
 enum tfm_platform_ioctl_reqest_types_t {
 	TFM_PLATFORM_IOCTL_FW_INFO = TFM_PLATFORM_IOCTL_CORE_LAST,
 	TFM_PLATFORM_IOCTL_NS_FAULT,
+	TFM_PLATFORM_IOCTL_RAM_CTRL,
 };
 
 #if CONFIG_FW_INFO
@@ -164,6 +167,78 @@ struct tfm_ns_fault_service_out {
  */
 int tfm_platform_ns_fault_set_handler(struct tfm_ns_fault_service_handler_context *context,
 				      tfm_ns_fault_service_handler_callback callback);
+
+/** @brief RAM-control service operation type. */
+enum tfm_ram_ctrl_op {
+	/** System ON power (MEMCONF CONTROL) — applied immediately. */
+	TFM_RAM_CTRL_OP_POWER,
+	/** System OFF retention (MEMCONF RET) — recorded now, applied at system off. */
+	TFM_RAM_CTRL_OP_RETAIN,
+	/** Read back MEMCONF POWER[0].CONTROL and RET (diagnostic). addr/len ignored. */
+	TFM_RAM_CTRL_OP_DUMP,
+};
+
+/** @brief Argument list for the RAM-control service. */
+struct tfm_ram_ctrl_args_t {
+	uint32_t op;   /* enum tfm_ram_ctrl_op */
+	uint32_t addr; /* RAM region start (must lie within NS-owned RAM) */
+	uint32_t len;  /* RAM region length in bytes */
+	uint32_t on;   /* powered/retained (true) or not (false) */
+};
+
+/** @brief Output for the RAM-control service. */
+struct tfm_ram_ctrl_out_t {
+	uint32_t result;
+	uint32_t control;     /* MEMCONF POWER[0].CONTROL snapshot (DUMP op) */
+	uint32_t ret;         /* MEMCONF POWER[0].RET snapshot (DUMP op) */
+	uint32_t ret2;        /* MEMCONF POWER[0].RET2 snapshot (DUMP op) */
+	uint32_t ret_planned; /* cached retention plan: mask of 32 KiB sections that
+			       * WILL be retained at System OFF (DUMP op)
+			       */
+};
+
+/** Power up/down a non-secure RAM range in System ON (MEMCONF CONTROL, immediate).
+ *
+ * @param[in] addr  Start address of the range (must be within NS-owned RAM).
+ * @param[in] len   Length of the range in bytes.
+ * @param[in] on    true to power up, false to power down.
+ *
+ * @retval 0        If successful.
+ * @retval -EINVAL  If the range is not entirely within NS-owned RAM.
+ * @retval -EPERM   If the TF-M platform service request failed.
+ */
+int nrf_ram_ctrl_svc_power_set(uintptr_t addr, size_t len, bool on);
+
+/** Mark/unmark a non-secure RAM range for retention across System OFF (MEMCONF RET).
+ *  Recorded in the secure domain and applied when the system enters System OFF
+ *  via the TF-M system-off service.
+ *
+ * @param[in] addr  Start address of the range (must be within NS-owned RAM).
+ * @param[in] len   Length of the range in bytes.
+ * @param[in] on    true to retain across System OFF, false to drop retention.
+ *
+ * @retval 0        If successful.
+ * @retval -EINVAL  If the range is not within NS-owned RAM or the shadow is full.
+ * @retval -EPERM   If the TF-M platform service request failed.
+ */
+int nrf_ram_ctrl_svc_retention_set(uintptr_t addr, size_t len, bool on);
+
+/** Read back the secure MEMCONF POWER[0] CONTROL and RET registers (diagnostic).
+ *  Each bit i corresponds to a 32 KiB RAM section: CONTROL bit = powered (System ON),
+ *  RET bit = retained (System OFF). Lets the non-secure app observe RAM power/retention
+ *  state that it cannot read directly (MEMCONF is secure).
+ *
+ * @param[out] control      MEMCONF POWER[0].CONTROL value.
+ * @param[out] ret          MEMCONF POWER[0].RET value.
+ * @param[out] ret2         MEMCONF POWER[0].RET2 value.
+ * @param[out] ret_planned  Cached retention plan: mask of 32 KiB sections that
+ *                          will be retained at System OFF. May be NULL.
+ *
+ * @retval 0        If successful.
+ * @retval -EPERM   If the TF-M platform service request failed.
+ */
+int nrf_ram_ctrl_svc_dump(uint32_t *control, uint32_t *ret, uint32_t *ret2,
+			  uint32_t *ret_planned);
 
 
 #ifdef __cplusplus

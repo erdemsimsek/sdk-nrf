@@ -215,6 +215,13 @@ if(TFM_PARTITION_PLATFORM)
     ${src_dir}/tfm_platform_system.c
     ${src_dir}/tfm_ioctl_s_api.c
   )
+
+  # The RAM-control service Kconfig is forwarded as a CMake var by sdk-nrf's
+  # trusted-firmware-m/CMakeLists.txt; turn it into a compile definition so the
+  # `#if TFM_NRF_RAM_CTRL_SERVICE` guards in tfm_platform_system.c take effect.
+  if(TFM_NRF_RAM_CTRL_SERVICE)
+    target_compile_definitions(platform_s PUBLIC TFM_NRF_RAM_CTRL_SERVICE)
+  endif()
 endif()
 
 if(PSA_CRYPTO_EXTERNAL_CORE)
