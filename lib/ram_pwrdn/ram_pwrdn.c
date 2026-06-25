@@ -24,6 +24,13 @@
 #include <pm_config.h>
 #endif
 
+#if defined(CONFIG_BUILD_WITH_TFM)
+/* In a TF-M build the non-secure app cannot access MEMCONF directly; route
+ * power-down/up requests to the secure RAM-control service instead.
+ */
+#include <tfm/tfm_ioctl_api.h>
+#endif
+
 #define RAM_IMAGE_END_ADDR ((uintptr_t)_image_ram_end)
 #define RAM_BANK_COUNT ARRAY_SIZE(banks)
 
@@ -88,7 +95,8 @@ static const struct ram_bank banks[] = {
 /*
  * Power down selected RAM sections of the given bank.
  */
-static void ram_bank_power_down(uint8_t bank_id, uint8_t first_section_id, uint8_t last_section_id)
+static __maybe_unused void ram_bank_power_down(uint8_t bank_id, uint8_t first_section_id,
+					       uint8_t last_section_id)
 {
 #if defined(CONFIG_SOC_NRF52840) || defined(CONFIG_SOC_NRF52833)
 	uint32_t mask = GENMASK(NRF_POWER_RAMPOWER_S0POWER_POS + last_section_id,
@@ -108,7 +116,8 @@ static void ram_bank_power_down(uint8_t bank_id, uint8_t first_section_id, uint8
 /*
  * Power up selected RAM sections of the given bank.
  */
-static void ram_bank_power_up(uint8_t bank_id, uint8_t first_section_id, uint8_t last_section_id)
+static __maybe_unused void ram_bank_power_up(uint8_t bank_id, uint8_t first_section_id,
+					     uint8_t last_section_id)
 {
 #if defined(CONFIG_SOC_NRF52840) || defined(CONFIG_SOC_NRF52833)
 	uint32_t mask = GENMASK(NRF_POWER_RAMPOWER_S0POWER_POS + last_section_id,
@@ -139,7 +148,8 @@ static uintptr_t ram_bank_size(const struct ram_bank *bank)
  * If the address points before or after the RAM bank then 0 or the number of bank sections
  * is returned, respectively.
  */
-static uint8_t ram_bank_section_id_floor(uintptr_t address, const struct ram_bank *bank)
+static __maybe_unused uint8_t ram_bank_section_id_floor(uintptr_t address,
+							const struct ram_bank *bank)
 {
 	if (address < bank->start) {
 		return 0;
@@ -158,7 +168,8 @@ static uint8_t ram_bank_section_id_floor(uintptr_t address, const struct ram_ban
  * If the address points before or after the RAM bank then 0 or the number of bank sections
  * is returned, respectively.
  */
-static uint8_t ram_bank_section_id_ceil(uintptr_t address, const struct ram_bank *bank)
+static __maybe_unused uint8_t ram_bank_section_id_ceil(uintptr_t address,
+						       const struct ram_bank *bank)
 {
 	if (address < bank->start) {
 		return 0;
@@ -195,6 +206,9 @@ static uintptr_t ram_end_addr(void)
 
 void power_down_ram(uintptr_t start_address, uintptr_t end_address)
 {
+#if defined(CONFIG_BUILD_WITH_TFM)
+	(void)nrf_ram_ctrl_svc_power_set(start_address, end_address - start_address, false);
+#else
 	for (uint8_t bank_id = 0; bank_id < RAM_BANK_COUNT; ++bank_id) {
 		const struct ram_bank *bank = &banks[bank_id];
 
@@ -208,10 +222,14 @@ void power_down_ram(uintptr_t start_address, uintptr_t end_address)
 			ram_bank_power_down(bank_id, section_begin, section_end - 1);
 		}
 	}
+#endif
 }
 
 void power_up_ram(uintptr_t start_address, uintptr_t end_address)
 {
+#if defined(CONFIG_BUILD_WITH_TFM)
+	(void)nrf_ram_ctrl_svc_power_set(start_address, end_address - start_address, true);
+#else
 	for (uint8_t bank_id = 0; bank_id < RAM_BANK_COUNT; ++bank_id) {
 		const struct ram_bank *bank = &banks[bank_id];
 
@@ -225,6 +243,7 @@ void power_up_ram(uintptr_t start_address, uintptr_t end_address)
 			ram_bank_power_up(bank_id, section_begin, section_end - 1);
 		}
 	}
+#endif
 }
 
 void power_down_unused_ram(void)
