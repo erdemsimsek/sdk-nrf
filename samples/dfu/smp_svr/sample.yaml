@@ -68,8 +68,10 @@ tests:
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
       - nrf54ls05dk/nrf54ls05b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
   sample.dfu.smp_svr.encryption.rsa:
     platform_allow:
       - nrf52840dk/nrf52840
@@ -100,8 +102,10 @@ tests:
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
       - nrf54ls05dk/nrf54ls05b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags:
       - encryption
     extra_args:
@@ -119,8 +123,10 @@ tests:
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
       - nrf54ls05dk/nrf54ls05b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags:
       - encryption
     extra_args:
@@ -139,8 +145,10 @@ tests:
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
       - nrf54ls05dk/nrf54ls05b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags:
       - signature
     extra_args:
@@ -155,8 +163,10 @@ tests:
       - nrf54lc10dk/nrf54lc10a/cpuapp
       - nrf54h20dk/nrf54h20/cpuapp
       - nrf54ls05dk/nrf54ls05b/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags:
       - signature
     extra_args:
@@ -191,8 +201,10 @@ tests:
       - nrf54lm20dk/nrf54lm20b/cpuapp
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags: kmu
     extra_args:
       - SB_CONFIG_MCUBOOT_SIGNATURE_USING_KMU=y
@@ -205,8 +217,10 @@ tests:
       - nrf54lm20dk/nrf54lm20b/cpuapp
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     tags:
       - kmu
       - nsib
@@ -244,8 +258,10 @@ tests:
       - nrf54lm20dk/nrf54lm20b/cpuapp
       - nrf54lv10dk/nrf54lv10a/cpuapp
       - nrf54lc10dk/nrf54lc10a/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     integration_platforms:
       - nrf54l15dk/nrf54l15/cpuapp
+      - nrf7120dk/nrf7120/cpuapp
     extra_args:
       - SB_CONFIG_MCUBOOT_MODE_OVERWRITE_ONLY=y
       - SB_CONFIG_MCUBOOT_COMPRESSED_IMAGE_SUPPORT=y
