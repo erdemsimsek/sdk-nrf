@@ -1,0 +1,16 @@
+#include "nrf7120dk_nrf7120_cpuapp.overlay"
+
+/ {
+	p0_wakeup_buttons {
+		compatible = "gpio-keys";
+
+		p0_wakeup_button: button_p0_00 {
+			gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "External active-low wake input on P0.00";
+		};
+	};
+
+	aliases {
+		sw0 = &p0_wakeup_button;
+	};
+};
