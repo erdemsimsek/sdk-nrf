@@ -1,0 +1,96 @@
+/*
+ * Grouped peripheral-isolation overlay. PDSELECT remains available through
+ * SREGS30 and the fixed P0.10 output even though the GPIO driver is disabled.
+ */
+
+&uart00 {
+	status = "disabled";
+};
+
+&uart20 {
+	status = "disabled";
+};
+
+&uart21 {
+	status = "disabled";
+};
+
+&spi00 {
+	status = "disabled";
+};
+
+&gpio0 {
+	status = "disabled";
+};
+
+&gpio1 {
+	status = "disabled";
+};
+
+&gpio2 {
+	status = "disabled";
+};
+
+&gpio3 {
+	status = "disabled";
+};
+
+&gpio4 {
+	status = "disabled";
+};
+
+&gpiote20 {
+	status = "disabled";
+};
+
+&gpiote30 {
+	status = "disabled";
+};
+
+&radio {
+	status = "disabled";
+};
+
+&ieee802154 {
+	status = "disabled";
+};
+
+&temp {
+	status = "disabled";
+};
+
+&xo24m {
+	status = "disabled";
+};
+
+&pwm20 {
+	status = "disabled";
+};
+
+&adc {
+	status = "disabled";
+};
+
+&nfct {
+	status = "disabled";
+};
+
+&pwr_antswc {
+	status = "disabled";
+};
+
+&wifi {
+	status = "disabled";
+};
+
+&audio_auxpll {
+	status = "disabled";
+};
+
+&cpuapp_bellboard {
+	status = "disabled";
+};
+
+&wifi_bellboard {
+	status = "disabled";
+};

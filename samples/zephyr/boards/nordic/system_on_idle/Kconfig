@@ -1,0 +1,128 @@
+mainmenu "nRF7120 System ON idle measurement"
+
+config NRF7120_IDLE_DIAGNOSTICS
+	bool "Print System ON idle register snapshots"
+	depends on SOC_NRF7120 && SERIAL
+	help
+	  Print POWER, REGULATORS, HVBUCK, MEMCONF, GRTC, oscillator, and
+	  top-level CLOCK state before and after each timed idle interval.
+	  These snapshots are taken while the CPU and UART are active; they
+	  describe persistent configuration and events, not instantaneous
+	  register values during WFI.
+
+config NRF7120_FORCE_LOWPWR
+	bool "Request variable-latency low-power mode"
+	depends on SOC_NRF7120
+	help
+	  Trigger POWER.TASKS_LOWPWR before entering timed or permanent idle.
+	  In this mode oscillators and regulators may stop when no remaining
+	  consumer requests their clock or power resources.
+
+config NRF7120_PDSELECT_DIAGNOSTICS
+	bool "Route one internal power-state signal to P0.10"
+	depends on SOC_NRF7120
+	help
+	  Write SREGS30.PDSELECT.PIN1 to route the selected internal signal to
+	  P0.10. PIN0/P0.09 is kept disabled because P0.09 supplies the board
+	  Wi-Fi antenna switch and was not usable as a general monitor.
+
+config NRF7120_PDSELECT_SIGNAL
+	int "P0.10 PDSELECT signal"
+	depends on NRF7120_PDSELECT_DIAGNOSTICS
+	range 0 13
+	default 4
+	help
+	  Select the signal routed through PDSELECT.PIN1 to P0.10:
+	  0 disabled, 1 PD_MAIN, 2 PD_LP, 3 PD_PERIPH, 4 PD_MCU,
+	  5 PD_RADIO, 6 PD_CRACEN/PD_MCU_AUX, 7 PD_WIFI,
+	  8 PwrAboveElv, 9 HVBUCK 1.1 V acknowledge,
+	  10 HVBUCK 1.0 V acknowledge, 11 HVBUCK LP mode,
+	  12 HVBUCK PWM mode, 13 helper-LDO acknowledge.
+
+config NRF7120_PDSELECT_ACTIVE_CALIBRATION
+	bool "Alternate five-second CPU-active and idle windows"
+	depends on NRF7120_PDSELECT_DIAGNOSTICS && SERIAL
+	help
+	  Busy-wait for five seconds before each five-second k_sleep interval.
+	  With PD_MCU selected, P0.10 should be high during the busy-wait and
+	  low if the hardware powers PD_MCU down during WFI.
+
+config NRF7120_IDLE_PHASE_MARKER
+	bool "Drive P0.00 high during timed CPU-active windows"
+	depends on NRF7120_PDSELECT_ACTIVE_CALIBRATION && GPIO
+	help
+	  Drive P0.00 high during each five-second CPU busy-wait. Immediately
+	  before console suspend and k_sleep, drive it low and restore the pin
+	  to its disconnected default configuration so the marker does not
+	  remain an active GPIO output during the measured idle interval.
+
+config NRF7120_BOOT_MARKER
+	bool "Pulse P0.00 for 100 ms after entering main"
+	depends on SOC_NRF7120 && GPIO
+	help
+	  Drive P0.00 high for 100 ms at the start of main, then drive it low
+	  and restore the disconnected default pin configuration. Observing the
+	  pulse after a cold power cycle proves that the application booted;
+	  disconnecting the pin before idle prevents it from affecting the
+	  stable-current measurement.
+
+config NRF7120_SLEEP_FOREVER
+	bool "Block the main thread forever"
+	depends on SOC_NRF7120 && !SERIAL && !NRF7120_DIRECT_WFI
+	help
+	  Call k_sleep(K_FOREVER) after all requested configuration. This
+	  retains the normal Zephyr scheduler and idle-thread path but adds no
+	  periodic application timeout.
+
+config NRF7120_WIFI_AUTOCGCORE_CLEAR
+	bool "Apply the WZN-9779 Wi-Fi clock workaround"
+	depends on SOC_NRF7120
+	help
+	  Clear WIFICORECLOCKRESETCTRL.CLOCKGATECTRLAUTOCG1.AUTOCGCORE before
+	  idle. WZN-9779 identifies this bit as a source of a prolonged Wi-Fi
+	  core-clock request after debugger disconnect. This is an engineering
+	  diagnostic workaround, not a production integration decision.
+
+config NRF7120_HVBUCK_EVENT_CLEAR
+	bool "Clear HVBUCK mode-change events before each idle window"
+	depends on NRF7120_IDLE_DIAGNOSTICS
+	help
+	  Write zero to HVBUCK EVENTS_LP2HP, EVENTS_HP2LP, EVENTS_HP2PWM, and
+	  EVENTS_PWM2HP before each timed idle window, then print the
+	  immediate post-clear readback. This is the only write this sample
+	  makes to the buck converter's own peripheral state, so it is
+	  opt-in and default-off: building and flashing the diagnostics
+	  variant without this option enabled never writes to HVBUCK.
+	  Enabling it is what revealed that EVENTS_HP2LP and EVENTS_LP2HP
+	  both fire on every single idle cycle, proving a real HP->LP->HP
+	  transition attempt that STATUS and an oscilloscope are both too
+	  slow to catch directly.
+
+config NRF7120_ROMDONE_SET
+	bool "Write REGULATORS.ROM.ROMDONE before idle"
+	depends on SOC_NRF7120
+	help
+	  Write one to REGULATORS.ROM.ROMDONE. The nRF7120 MDK states that this
+	  releases Boot ROM startup requests for PD_MCU, PD_MP, and PD_LP.
+	  Hardware testing found no improvement; this option is retained only
+	  to reproduce that A/B result.
+
+config NRF7120_DIRECT_WFI
+	bool "Enter a direct WFI isolation state"
+	depends on SOC_NRF7120 && !SERIAL && SYSTEM_TIMER_HAS_DISABLE_SUPPORT
+	help
+	  Disable the system timer, disable and clear all NVIC interrupts,
+	  clear pending SysTick and PendSV, and execute WFI directly. This
+	  bypasses Zephyr scheduling and removes GRTC from the test. It is an
+	  isolation mode and does not meet the final GRTC-running requirement.
+
+config NRF7120_DIRECT_WFI_MARKER
+	bool "Mark direct WFI entry and first exit on P0.00"
+	depends on NRF7120_DIRECT_WFI && GPIO
+	help
+	  Drive P0.00 high immediately before the first direct WFI. If WFI
+	  exits, drive P0.00 low and spin permanently without entering WFI
+	  again. A continuously high P0.00 therefore proves that firmware has
+	  not executed beyond the first WFI.
+
+source "Kconfig.zephyr"

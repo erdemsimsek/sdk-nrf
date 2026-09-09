@@ -1,0 +1,29 @@
+sample:
+  name: nRF7120 System ON idle diagnostics
+
+common:
+  build_only: true
+  platform_allow:
+    - nrf7120dk/nrf7120/cpuapp
+  integration_platforms:
+    - nrf7120dk/nrf7120/cpuapp
+  tags:
+    - ci_samples_zephyr_boards_nordic_system_on_idle
+
+tests:
+  nrf.extended.sample.boards.nrf.system_on_idle.diagnostics:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.quiet_pdmcu:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.direct_wfi_marker:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/direct_wfi.conf;configs/direct_wfi_marker.conf;configs/pd_mcu.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.minimal:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/direct_wfi.conf;configs/minimal_peripherals.conf;configs/pd_mcu.conf"
+      - DTC_OVERLAY_FILE=overlays/minimal_peripherals.overlay
