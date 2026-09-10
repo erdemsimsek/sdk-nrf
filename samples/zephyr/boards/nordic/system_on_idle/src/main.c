@@ -6,7 +6,6 @@
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
-#include <zephyr/drivers/timer/system_timer.h>
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 
@@ -22,7 +21,6 @@
 #endif
 
 #define IDLE_TIME	 K_SECONDS(5)
-#define ACTIVE_TIME_US	 5000000U
 #define POWERED_RAM_SIZE (128U * 1024U)
 
 /*
@@ -95,8 +93,6 @@
 	(NRF7120_WIFI_RPUPBUS_BASE + NRF7120_WIFI_CLOCKRESETCTRL_OFFSET +                          \
 	 NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_OFFSET)
 #define NRF7120_WIFI_AUTOCGCORE_MASK (1UL << 28)
-
-#define NRF7120_REGULATORS_ROMDONE_ADDR 0x5012058CUL
 
 #if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS)
 static uint32_t reg_read32(uintptr_t address)
@@ -232,20 +228,6 @@ static void clear_wifi_autocgcore(void)
 }
 #endif
 
-#if defined(CONFIG_NRF7120_ROMDONE_SET)
-static void set_romdone(void)
-{
-	volatile uint32_t *const romdone = (volatile uint32_t *)NRF7120_REGULATORS_ROMDONE_ADDR;
-
-	*romdone = 1U;
-	__DSB();
-
-#if defined(CONFIG_SERIAL)
-	printk("REGULATORS.ROM.ROMDONE set: 0x%08x\n", *romdone);
-#endif
-}
-#endif
-
 static void configure_ram(void)
 {
 #if defined(CONFIG_RAM_POWER_DOWN_LIBRARY)
@@ -266,18 +248,13 @@ static void run_timed_measurement(const struct device *console)
 {
 	int err;
 
-	while (true) {
-#if defined(CONFIG_NRF7120_PDSELECT_ACTIVE_CALIBRATION)
 #if defined(CONFIG_NRF7120_IDLE_PHASE_MARKER)
-		nrf_gpio_pin_set(NRF_GPIO_PIN_MAP(0, 0));
-		nrf_gpio_cfg_output(NRF_GPIO_PIN_MAP(0, 0));
-#endif
-		printk("CPU active for 5 seconds\n");
-		k_busy_wait(ACTIVE_TIME_US);
+	/* High from here on: the device is running, not idling. */
+	nrf_gpio_pin_set(NRF_GPIO_PIN_MAP(0, 0));
+	nrf_gpio_cfg_output(NRF_GPIO_PIN_MAP(0, 0));
 #endif
 
-		printk("Entering System ON idle for 5 seconds\n");
-
+	while (true) {
 #if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS)
 		print_power_snapshot("pre-idle");
 		nrf_power_event_clear(NRF_POWER, NRF_POWER_EVENT_SLEEPENTER);
@@ -294,6 +271,8 @@ static void run_timed_measurement(const struct device *console)
 		       reg_read32(NRF7120_HVBUCK_EVENTS_HP2PWM_ADDR),
 		       reg_read32(NRF7120_HVBUCK_EVENTS_PWM2HP_ADDR));
 #endif
+
+		printk("Entering System ON idle for 5 seconds\n");
 
 #if defined(CONFIG_NRF7120_IDLE_PHASE_MARKER)
 		/*
@@ -317,6 +296,12 @@ static void run_timed_measurement(const struct device *console)
 			return;
 		}
 
+#if defined(CONFIG_NRF7120_IDLE_PHASE_MARKER)
+		/* Rising edge: k_sleep/WFI returned, the device is running again. */
+		nrf_gpio_pin_set(NRF_GPIO_PIN_MAP(0, 0));
+		nrf_gpio_cfg_output(NRF_GPIO_PIN_MAP(0, 0));
+#endif
+
 #if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS)
 		printk("post-idle: SLEEPENTER=%u\n",
 		       nrf_power_event_check(NRF_POWER, NRF_POWER_EVENT_SLEEPENTER));
@@ -324,50 +309,6 @@ static void run_timed_measurement(const struct device *console)
 #endif
 		printk("Woke from System ON idle\n");
 	}
-}
-#endif
-
-#if defined(CONFIG_NRF7120_DIRECT_WFI)
-static FUNC_NORETURN void enter_direct_wfi(void)
-{
-#if defined(CONFIG_NRF7120_DIRECT_WFI_MARKER)
-	/*
-	 * P0.00 is high only before the first WFI. If WFI returns, the code
-	 * below clears P0.00 and spins forever without setting it again.
-	 */
-	nrf_gpio_pin_set(NRF_GPIO_PIN_MAP(0, 0));
-	nrf_gpio_cfg_output(NRF_GPIO_PIN_MAP(0, 0));
-#endif
-
-	sys_clock_disable();
-	__disable_irq();
-
-	for (size_t i = 0; i < sizeof(NVIC->ICER) / sizeof(NVIC->ICER[0]); i++) {
-		NVIC->ICER[i] = UINT32_MAX;
-		NVIC->ICPR[i] = UINT32_MAX;
-	}
-
-	uint32_t icsr = SCB_ICSR_PENDSVCLR_Msk | SCB_ICSR_PENDSTCLR_Msk;
-
-#ifdef SCB_ICSR_STTNS_Msk
-	icsr |= SCB->ICSR & SCB_ICSR_STTNS_Msk;
-#endif
-	SCB->ICSR = icsr;
-	__DSB();
-	__ISB();
-
-#if defined(CONFIG_NRF7120_DIRECT_WFI_MARKER)
-	__WFI();
-	nrf_gpio_pin_clear(NRF_GPIO_PIN_MAP(0, 0));
-
-	while (true) {
-		__NOP();
-	}
-#else
-	while (true) {
-		__WFI();
-	}
-#endif
 }
 #endif
 
@@ -391,14 +332,6 @@ int main(void)
 	clear_wifi_autocgcore();
 #endif
 
-#if defined(CONFIG_NRF7120_ROMDONE_SET)
-	set_romdone();
-#endif
-
-#if defined(CONFIG_NRF7120_IDLE_PHASE_MARKER)
-	nrf_gpio_cfg_default(NRF_GPIO_PIN_MAP(0, 0));
-#endif
-
 #if defined(CONFIG_NRF7120_FORCE_LOWPWR)
 	nrf_power_task_trigger(NRF_POWER, NRF_POWER_TASK_LOWPWR);
 #if defined(CONFIG_SERIAL)
@@ -408,10 +341,6 @@ int main(void)
 
 #if defined(CONFIG_SERIAL)
 	run_timed_measurement(console);
-#endif
-
-#if defined(CONFIG_NRF7120_DIRECT_WFI)
-	enter_direct_wfi();
 #endif
 
 #if defined(CONFIG_NRF7120_SLEEP_FOREVER)

@@ -15,15 +15,14 @@ tests:
     extra_args:
       - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf"
 
+  nrf.extended.sample.boards.nrf.system_on_idle.domain_marker_pdmcu:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.hvbuck_event_clear:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/hvbuck_event_clear.conf"
+
   nrf.extended.sample.boards.nrf.system_on_idle.quiet_pdmcu:
     extra_args:
       - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf"
-
-  nrf.extended.sample.boards.nrf.system_on_idle.direct_wfi_marker:
-    extra_args:
-      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/direct_wfi.conf;configs/direct_wfi_marker.conf;configs/pd_mcu.conf"
-
-  nrf.extended.sample.boards.nrf.system_on_idle.minimal:
-    extra_args:
-      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/direct_wfi.conf;configs/minimal_peripherals.conf;configs/pd_mcu.conf"
-      - DTC_OVERLAY_FILE=overlays/minimal_peripherals.overlay
