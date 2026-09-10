@@ -1,5 +1,18 @@
 mainmenu "nRF7120 System ON idle measurement"
 
+config NRF7120_RAM_128K_ONLY
+	bool "Keep only the first 128 KiB of RAM powered, power down the rest"
+	select RAM_POWER_DOWN_LIBRARY
+	select NRF_FORCE_RAM_ON_REBOOT
+	help
+	  Requests power-down for everything in application RAM above a
+	  fixed first 128 KiB (POWERED_RAM_SIZE in src/main.c). The 128 KiB
+	  boundary itself is a compile-time constant, not a separate
+	  Kconfig value. Enabling this single option is enough: it selects
+	  RAM_POWER_DOWN_LIBRARY (the library that performs the power-down)
+	  and NRF_FORCE_RAM_ON_REBOOT (which powers all RAM back on before
+	  a reboot, so a reflash always starts from a known-good state).
+
 config NRF7120_IDLE_DIAGNOSTICS
 	bool "Print System ON idle register snapshots"
 	depends on SOC_NRF7120 && SERIAL

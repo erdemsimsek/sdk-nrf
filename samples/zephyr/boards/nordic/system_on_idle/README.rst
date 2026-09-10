@@ -119,10 +119,16 @@ Source layout
 Application execution order
 ****************************
 
-1. Optionally request RAM power-down above the first 128 KiB.
-2. Optionally route an internal power-domain/regulator signal to P0.10.
-3. Optionally clear Wi-Fi ``AUTOCGCORE``.
-4. Optionally trigger ``POWER.TASKS_LOWPWR``.
+1. If `CONFIG_NRF7120_RAM_128K_ONLY`_ is enabled, request power-down for
+   everything above a fixed first 128 KiB of RAM (the 128 KiB boundary
+   itself is a compile-time constant, not Kconfig-tunable today; only
+   whether the request happens at all is).
+2. If `CONFIG_NRF7120_PDSELECT_DIAGNOSTICS`_ is enabled, route the domain
+   selected by `CONFIG_NRF7120_PDSELECT_SIGNAL`_ to P0.10.
+3. If `CONFIG_NRF7120_WIFI_AUTOCGCORE_CLEAR`_ is enabled, clear Wi-Fi
+   ``AUTOCGCORE``.
+4. If `CONFIG_NRF7120_FORCE_LOWPWR`_ is enabled, trigger
+   ``POWER.TASKS_LOWPWR``.
 5. Enter exactly one selected idle strategy:
 
    * the timed loop, with P0.00 marker and/or register diagnostics, when
@@ -132,6 +138,20 @@ Application execution order
 
 Kconfig options
 ****************
+
+CONFIG_NRF7120_RAM_128K_ONLY
+==============================
+
+Requests power-down for everything in application RAM above a fixed first
+128 KiB (``POWERED_RAM_SIZE`` in ``src/main.c``). The 128 KiB boundary
+itself is a compile-time constant, not a separate Kconfig value — only
+whether this request happens at all is configurable.
+
+Enabling this single option is enough: it ``select``\s ``RAM_POWER_DOWN_LIBRARY``
+(the library that actually performs the power-down, via ``power_down_ram()``)
+and ``NRF_FORCE_RAM_ON_REBOOT`` (which powers all RAM back on before a
+reboot, so a reflash always starts from a known-good state) automatically —
+you don't need to set either of those directly.
 
 CONFIG_NRF7120_IDLE_DIAGNOSTICS
 ================================
@@ -397,8 +417,9 @@ Common fragments
    not meaningful in this mode (there is no repeating loop to observe).
 
 ``configs/ram_128k.conf``
-   Enables the RAM power-down library and requests power-down above the first
-   128 KiB of application RAM. Also forces RAM on before reboot.
+   Sets ``CONFIG_NRF7120_RAM_128K_ONLY=y``, which requests power-down above
+   the first 128 KiB of application RAM (see
+   `CONFIG_NRF7120_RAM_128K_ONLY`_).
 
 ``configs/diagnostics.conf``
    Enables the timed read-only register snapshots. Requires UART.

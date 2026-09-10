@@ -230,7 +230,7 @@ static void clear_wifi_autocgcore(void)
 
 static void configure_ram(void)
 {
-#if defined(CONFIG_RAM_POWER_DOWN_LIBRARY)
+#if defined(CONFIG_NRF7120_RAM_128K_ONLY)
 	uintptr_t ram_start = DT_REG_ADDR(DT_CHOSEN(zephyr_sram));
 	uintptr_t ram_end = ram_start + DT_REG_SIZE(DT_CHOSEN(zephyr_sram));
 
