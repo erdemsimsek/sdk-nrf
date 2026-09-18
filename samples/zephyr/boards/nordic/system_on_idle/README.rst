@@ -168,7 +168,12 @@ Prints these snapshots before and after each five-second ``k_sleep``:
 * ``REGULATORS.ELVCONFIG`` and startup configuration
   (``DCDCEN``/``REGULATORSENABLE``/``CONFIG``/``PORBORRESET``/``A2A``/``ROM``).
 * MEMCONF power and retention masks.
-* GRTC and LFXO state.
+* GRTC and LFXO state, including ``GRTC.CLKCFG`` — its ``CLKSEL`` field
+  (bits [17:16]) selects GRTC's low-frequency clock source: ``0``/``LFXO``,
+  ``1``/``SystemLFCLK``, ``2``/``LFLPRC``. Jon Harrison (sim) found that
+  ``SystemLFCLK`` keeps GRTC's ``reqLfclkBuff`` request asserted, which
+  blocks ELV entry (``lpUlvAllowed=0``); ``LFXO`` or ``LFLPRC`` do not. See
+  ``configs/grtc_source_lflprc.conf`` below.
 * CLOCK source, ``ALWAYSRUN``, ``RUN``, and ``STAT`` fields for XO, PLL,
   LFCLK, PLL24M, and AUXPLL.
 * HVBUCK ``STATUS``, decoded ``MODECTRL`` (``VAL``/``BLOCK_MODE_LP``/
@@ -367,6 +372,29 @@ periodic application wakeup at all — the configuration to use for an actual
 quiet current measurement (combine with ``configs/quiet.conf`` and
 ``configs/sloppy_idle.conf``).
 
+CONFIG_NRF7120_QUIET_PERIODIC_SLEEP
+=====================================
+
+Requires UART to be disabled. Loops
+``k_sleep(K_SECONDS(CONFIG_NRF7120_IDLE_SECONDS))`` forever, with no
+printing, no console suspend/resume, and no ``P0.00`` marker (that
+requires ``SERIAL``) — nothing at all happens between one wake and the
+next sleep. Exists to isolate one variable cleanly: is it periodic
+waking itself that prevents reaching ELV, or was the cyclic diagnostics
+build's console/print/GPIO-marker activity around each wake the actual
+confound? Combine with ``configs/quiet.conf`` and a PDSELECT signal
+(``configs/pwr_above_elv.conf`` does not require ``SERIAL``) to observe
+the result with none of that overhead.
+
+CONFIG_NRF7120_IDLE_SECONDS
+=============================
+
+Integer, default ``5``, range ``1``-``3600``. Shared idle duration for
+both the ``SERIAL`` timed loop and ``CONFIG_NRF7120_QUIET_PERIODIC_SLEEP``.
+Raise it (``configs/idle_60s.conf`` sets ``60``) to test whether a
+longer, still-*bounded* idle window is enough to reach ELV, as opposed
+to needing an untimed ``k_sleep(K_FOREVER)``.
+
 CONFIG_NRF7120_WIFI_AUTOCGCORE_CLEAR
 =====================================
 
@@ -445,6 +473,39 @@ Common fragments
 
 ``configs/wifi_autocgcore_clear.conf``
    Applies the WZN-9779 Wi-Fi core-clock workaround.
+
+``configs/grtc_source_lflprc.conf``
+   Sets ``CONFIG_NRF_GRTC_TIMER_SOURCE_LFLPRC=y`` (a standard, already-
+   supported Zephyr/nrfx GRTC driver Kconfig choice, no custom code) so
+   GRTC uses its private ``LFLPRC`` oscillator instead of the default
+   clock source. Tests Jon Harrison's lead that ``GRTC.CLKCFG.CLKSEL``
+   being ``SystemLFCLK`` blocks ELV entry.
+
+``configs/clock_lfclk_stop.conf``
+   Sets ``CONFIG_NRF7120_CLOCK_LFCLK_STOP=y``. Explicitly stops the
+   shared system LFCLK, Jon Harrison's follow-up test for whether it
+   -- not GRTC's own clock-source selection -- blocks ELV. Combine with
+   ``configs/grtc_source_lflprc.conf``. Unbounded wait loop: if
+   ``CLOCK.LFCLK.RUN`` never drops to ``0``, the device hangs here,
+   before ``Entering System ON idle`` ever prints.
+
+``configs/clock_lfclk_source_lfrc.conf``
+   Sets ``CONFIG_NRF7120_CLOCK_LFCLK_SOURCE_LFRC=y``. Stops, reconfigures,
+   and restarts the shared LFCLK on ``LFRC`` instead of the default
+   ``LFXO`` -- left running, not stopped. Jon Harrison's lead: his sim
+   showed ELV entered automatically on ``LFRC`` without needing
+   ``configs/clock_lfclk_stop.conf``'s workaround. Two unbounded wait
+   loops (stop, then restart) -- see the Kconfig help for the hang risk.
+
+``configs/quiet_periodic_sleep.conf``
+   Sets ``CONFIG_NRF7120_QUIET_PERIODIC_SLEEP=y``. Loops a bounded
+   ``k_sleep`` forever with no console/print/marker activity at all --
+   isolates whether periodic waking itself, not diagnostics overhead,
+   prevents reaching ELV. Combine with ``configs/quiet.conf``.
+
+``configs/idle_60s.conf``
+   Sets ``CONFIG_NRF7120_IDLE_SECONDS=60``. Tests a longer, still-bounded
+   idle window instead of the default 5 s.
 
 PDSELECT fragments
 ====================
@@ -592,6 +653,129 @@ For an actual current/voltage measurement rather than a UART trace. Replace
      -DEXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf"
 
 There is no UART output. Probe P0.10 and measure current/buck voltage.
+
+GRTC clock-source test (Jon Harrison's lead)
+==============================================
+
+Tests whether ``GRTC.CLKCFG.CLKSEL`` reads ``SystemLFCLK`` (blocking ELV
+per his sim) and whether switching it to ``LFLPRC`` changes anything, with
+the same diagnostics/domain-marker setup as the PD_MCU build above:
+
+.. code-block:: console
+
+   west build -p always \
+     -b nrf7120dk/nrf7120/cpuapp \
+     nrf/samples/zephyr/boards/nordic/system_on_idle \
+     -d build_nrf7120_grtc_source_lflprc \
+     -- \
+     -DEXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/grtc_source_lflprc.conf"
+
+Drop ``configs/grtc_source_lflprc.conf`` for the baseline (current default
+clock source) build. Watch the new ``GRTC_CLKCFG`` field in the UART
+diagnostics — decode its ``CLKSEL`` field, bits [17:16]: ``00`` is ``LFXO``,
+``01`` is ``SystemLFCLK`` (the suspected bad one), ``10`` is ``LFLPRC``.
+The register's other field, ``CLKFASTDIV`` (bits [7:0]), defaults to ``1``
+and is unrelated to this test. Check this alongside ``HV_STATUS`` and the
+buck voltage, to see whether an *unforced* transition into ``LPHyst``/ULV
+now occurs.
+
+**Confirmed result (2026-09-18)**: both ``LFXO`` (baseline) and
+``LFLPRC`` produce identical results on real silicon — ``HV_STATUS``
+stayed ``HPHyst``, ``HV_EVT_LP2HP``/``HV_EVT_HP2LP`` still fired every
+cycle, buck stayed at ~0.89 V, current unchanged (~1.6 uA either way).
+GRTC's own clock-source selection alone does not explain the bounce on
+this hardware.
+
+GRTC clock-source test + LFCLK stop (Jon Harrison's follow-up)
+=================================================================
+
+Follow-up to the result above: our diagnostics show ``CLK_LF RUN=1``
+while ``CLK_LF ALWAYSRUN=0`` — something other than an "always run"
+request keeps the shared system LFCLK running, independent of GRTC's own
+``CLKSEL``. This build combines the ``LFLPRC`` clock-source switch with
+explicitly stopping that shared LFCLK, to see whether *it*, not GRTC's
+selection, is what still blocks ELV:
+
+.. code-block:: console
+
+   west build -p always \
+     -b nrf7120dk/nrf7120/cpuapp \
+     nrf/samples/zephyr/boards/nordic/system_on_idle \
+     -d build_nrf7120_grtc_lflprc_lfclk_stop \
+     -- \
+     -DEXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/grtc_source_lflprc.conf;configs/clock_lfclk_stop.conf"
+
+.. warning::
+
+   The wait loop in ``CONFIG_NRF7120_CLOCK_LFCLK_STOP`` is unbounded. If
+   ``CLOCK.LFCLK.RUN`` never drops to ``0``, the device hangs **before**
+   ever printing ``Entering System ON idle`` — a different, earlier hang
+   than ``CONFIG_NRF7120_HVBUCK_FORCE_LP``'s. If UART goes silent right
+   after the ``CLOCK.LFCLK.RUN before stop:`` line with no further
+   output, that is this hang, not a bug to chase — power-cycle to
+   recover.
+
+Watch for the ``CLOCK.LFCLK.RUN before stop:``/``after stop:`` pair
+(expect ``before=0x00000001`` and, if it doesn't hang, ``after=0x00000000``),
+then the same ``HV_STATUS``/buck-voltage check as above.
+
+**Confirmed result**: in the cyclic diagnostics build above (periodic
+5-second wake), no change — ``HV_STATUS`` stayed ``HPHyst``, identical to
+every other capture. But the same ``LFLPRC`` + ``LFCLK_STOP`` combination
+in a **permanent, undisturbed idle** build (``configs/quiet.conf`` +
+``configs/sleep_forever.conf`` + ``configs/pwr_above_elv.conf`` instead
+of the diagnostics/marker fragments, no periodic wake at all) showed
+``P0.10`` (the ``PwrAboveElv`` hardware signal) reading **low** — i.e.
+genuinely in ELV — with current at ~0.85 uA and the buck output at
+~0.71 V on a multimeter. Best explanation: the cyclic build's own
+wake/resume-console/print/re-suspend activity every 5 seconds likely
+re-triggers whatever blocks ELV before it can settle; removing the
+periodic disturbance let it actually happen.
+
+GRTC LFCLK source: LFRC instead of LFXO (Jon Harrison's lead)
+================================================================
+
+Jon corrected an earlier misreading of our own data: ``CLK_LF SRC=1`` is
+``LFXO`` (confirmed via the MDK enum), not ``LFRC`` as first assumed —
+this device runs on ``LFXO`` by default. In his sim, switching the
+*shared* LFCLK to ``LFRC`` (left running, not stopped) let ELV happen
+automatically, without needing the "stop and leave it off" workaround
+above. Two builds test this on real silicon:
+
+Cyclic diagnostics variant (cross-checks against ``HV_STATUS``):
+
+.. code-block:: console
+
+   west build -p always \
+     -b nrf7120dk/nrf7120/cpuapp \
+     nrf/samples/zephyr/boards/nordic/system_on_idle \
+     -d build_nrf7120_lfclk_source_lfrc_diag \
+     -- \
+     -DEXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/clock_lfclk_source_lfrc.conf"
+
+Permanent-idle variant with the ``PwrAboveElv`` hardware signal on
+``P0.10`` (the methodology that actually caught ELV last time):
+
+.. code-block:: console
+
+   west build -p always \
+     -b nrf7120dk/nrf7120/cpuapp \
+     nrf/samples/zephyr/boards/nordic/system_on_idle \
+     -d build_nrf7120_lfclk_source_lfrc_sleep_forever_elv \
+     -- \
+     -DEXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/wifi_autocgcore_clear.conf;configs/clock_lfclk_source_lfrc.conf;configs/pwr_above_elv.conf"
+
+.. warning::
+
+   Both wait loops (stop, then restart) are unbounded, symmetric to
+   ``CONFIG_NRF7120_CLOCK_LFCLK_STOP``'s hang risk. In the diagnostics
+   variant, UART silence right after ``CLOCK.LFCLK.SRC before:`` with no
+   further output means it hung. In the quiet/permanent-idle variant,
+   current staying in the normal **running** range (not dropping to
+   idle-low) is the sign of a hang, same as before.
+
+Probe the same way as the successful ``PwrAboveElv`` capture: ``P0.10``
+low means genuinely in ELV, plus current and buck-output voltage.
 
 Flashing
 ********

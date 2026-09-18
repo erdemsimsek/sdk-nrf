@@ -20,7 +20,7 @@
 #error "This diagnostic sample supports nRF7120 only"
 #endif
 
-#define IDLE_TIME	 K_SECONDS(5)
+#define IDLE_TIME	 K_SECONDS(CONFIG_NRF7120_IDLE_SECONDS)
 #define POWERED_RAM_SIZE (128U * 1024U)
 
 /*
@@ -86,6 +86,12 @@
 #define NRF7120_SREGS30_BASE	      0x5010F000UL
 #define NRF7120_SREGS30_PDSELECT_ADDR (NRF7120_SREGS30_BASE + 0x780U)
 
+#define NRF7120_LDOHLP0V8_BASE		     0x50127000UL
+#define NRF7120_LDOHLP0V8_VOUTHPHELPER_ADDR (NRF7120_LDOHLP0V8_BASE + 0x48CU)
+
+#define NRF7120_VDETAO0V8_BASE			  0x5012C000UL
+#define NRF7120_VDETAO0V8_CONFIG_BROWNOUTLP_ADDR (NRF7120_VDETAO0V8_BASE + 0x41CU)
+
 #define NRF7120_WIFI_RPUPBUS_BASE		 0x48080000UL
 #define NRF7120_WIFI_CLOCKRESETCTRL_OFFSET	 0x1B000UL
 #define NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_OFFSET 0x160UL
@@ -94,7 +100,10 @@
 	 NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_OFFSET)
 #define NRF7120_WIFI_AUTOCGCORE_MASK (1UL << 28)
 
-#if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS)
+#if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS) || defined(CONFIG_NRF7120_HVBUCK_VOLTAGECTRL_MANUAL) || \
+	defined(CONFIG_NRF7120_HVBUCK_FORCE_LP) || defined(CONFIG_NRF7120_REGULATORS_ELVCONFIG_ZERO) || \
+	defined(CONFIG_NRF7120_VDETAO0V8_BROWNOUTLP_LOWER) || defined(CONFIG_NRF7120_LDOHLP0V8_HELPER_ZERO) || \
+	defined(CONFIG_NRF7120_ELVCONFIG_GRTC_PWM_CLKOUT_CLEAR)
 static uint32_t reg_read32(uintptr_t address)
 {
 	return *(volatile uint32_t *)address;
@@ -104,7 +113,9 @@ static void reg_write32(uintptr_t address, uint32_t value)
 {
 	*(volatile uint32_t *)address = value;
 }
+#endif
 
+#if defined(CONFIG_NRF7120_IDLE_DIAGNOSTICS)
 static void print_power_snapshot(const char *phase)
 {
 	printk("%s: CONSTLATSTAT=0x%08x ELVCONFIG=0x%08x "
@@ -121,10 +132,10 @@ static void print_power_snapshot(const char *phase)
 	       NRF_MEMCONF->POWER[0].RET2, NRF_MEMCONF->POWER[1].CONTROL, NRF_MEMCONF->POWER[1].RET,
 	       NRF_MEMCONF->POWER[1].RET2);
 
-	printk("%s: GRTC_MODE=0x%08x GRTC_SYSCOUNTER0_ACTIVE=0x%08x "
+	printk("%s: GRTC_MODE=0x%08x GRTC_SYSCOUNTER0_ACTIVE=0x%08x GRTC_CLKCFG=0x%08x "
 	       "LFXO_STATUS=0x%08x LFXO_MODE=0x%08x\n",
-	       phase, NRF_GRTC->MODE, NRF_GRTC->SYSCOUNTER[0].ACTIVE, NRF_LFXO->STATUS,
-	       NRF_LFXO->MODE);
+	       phase, NRF_GRTC->MODE, NRF_GRTC->SYSCOUNTER[0].ACTIVE, NRF_GRTC->CLKCFG,
+	       NRF_LFXO->STATUS, NRF_LFXO->MODE);
 
 	printk("%s: REG_DCDCEN=0x%08x REG_ENABLE=0x%08x "
 	       "REG_CONFIG=0x%08x PORBORRESET=0x%08x "
@@ -228,6 +239,145 @@ static void clear_wifi_autocgcore(void)
 }
 #endif
 
+#if defined(CONFIG_NRF7120_HVBUCK_VOLTAGECTRL_MANUAL)
+static void configure_hvbuck_voltagectrl_manual(void)
+{
+	uint32_t before = reg_read32(NRF7120_HVBUCK_VOLTAGECTRL_ADDR);
+
+	reg_write32(NRF7120_HVBUCK_VOLTAGECTRL_ADDR, 1);
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("HVBUCK.VOLTAGECTRL Manual: before=0x%08x after=0x%08x "
+	       "VOUT0V65=0x%08x VOUT0V8LP=0x%08x VOUT0V8HP=0x%08x\n",
+	       before, reg_read32(NRF7120_HVBUCK_VOLTAGECTRL_ADDR),
+	       reg_read32(NRF7120_HVBUCK_VOUT0V65_ADDR), reg_read32(NRF7120_HVBUCK_VOUT0V8LP_ADDR),
+	       reg_read32(NRF7120_HVBUCK_VOUT0V8HP_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_VDETAO0V8_BROWNOUTLP_LOWER)
+static void configure_vdetao0v8_brownoutlp_lower(void)
+{
+	uint32_t before = reg_read32(NRF7120_VDETAO0V8_CONFIG_BROWNOUTLP_ADDR);
+
+	reg_write32(NRF7120_VDETAO0V8_CONFIG_BROWNOUTLP_ADDR, 0x03);
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("VDETAO0V8.CONFIG.BROWNOUTLP: before=0x%08x after=0x%08x\n", before,
+	       reg_read32(NRF7120_VDETAO0V8_CONFIG_BROWNOUTLP_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_LDOHLP0V8_HELPER_ZERO)
+static void configure_ldohlp0v8_helper_zero(void)
+{
+	uint32_t before = reg_read32(NRF7120_LDOHLP0V8_VOUTHPHELPER_ADDR);
+
+	reg_write32(NRF7120_LDOHLP0V8_VOUTHPHELPER_ADDR, 0);
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("LDOHLP0V8.VOUTHPHELPER: before=0x%08x after=0x%08x\n", before,
+	       reg_read32(NRF7120_LDOHLP0V8_VOUTHPHELPER_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_HVBUCK_FORCE_LP)
+static void configure_hvbuck_force_lp(void)
+{
+	uint32_t status_before = reg_read32(NRF7120_HVBUCK_STATUS_ADDR);
+
+	reg_write32(NRF7120_HVBUCK_VOUT0V65_ADDR, CONFIG_NRF7120_HVBUCK_VOUT0V65_CODE);
+	reg_write32(NRF7120_HVBUCK_VOLTAGECTRL_ADDR, 1);
+	reg_write32(NRF7120_HVBUCK_MODECTRL_ADDR, 1);
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("HVBUCK force LP: STATUS before=0x%08x after=0x%08x "
+	       "VOLTAGECTRL=0x%08x MODECTRL=0x%08x VOUT0V65=0x%08x\n",
+	       status_before, reg_read32(NRF7120_HVBUCK_STATUS_ADDR),
+	       reg_read32(NRF7120_HVBUCK_VOLTAGECTRL_ADDR), reg_read32(NRF7120_HVBUCK_MODECTRL_ADDR),
+	       reg_read32(NRF7120_HVBUCK_VOUT0V65_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_REGULATORS_ELVCONFIG_ZERO)
+static void configure_regulators_elvconfig_zero(void)
+{
+	uint32_t before = reg_read32(NRF7120_REGULATORS_ELVCONFIG_ADDR);
+
+	reg_write32(NRF7120_REGULATORS_ELVCONFIG_ADDR, 0);
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("REGULATORS.ELVCONFIG: before=0x%08x after=0x%08x\n", before,
+	       reg_read32(NRF7120_REGULATORS_ELVCONFIG_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_ELVCONFIG_GRTC_PWM_CLKOUT_CLEAR)
+static void configure_elvconfig_grtc_pwm_clkout_clear(void)
+{
+	uint32_t before = reg_read32(NRF7120_REGULATORS_ELVCONFIG_ADDR);
+
+	/* Bit 22 = ELVGRTCPWM, bit 23 = ELVGRTCCLKOUT. Every other bit,
+	 * including ELVPDLP/ELVPDPERIPH, is left exactly as read.
+	 */
+	reg_write32(NRF7120_REGULATORS_ELVCONFIG_ADDR, before & ~((1UL << 22) | (1UL << 23)));
+	__DSB();
+
+#if defined(CONFIG_SERIAL)
+	printk("REGULATORS.ELVCONFIG GRTC PWM/CKOUT clear: before=0x%08x after=0x%08x\n", before,
+	       reg_read32(NRF7120_REGULATORS_ELVCONFIG_ADDR));
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_CLOCK_LFCLK_STOP)
+static void configure_clock_lfclk_stop(void)
+{
+#if defined(CONFIG_SERIAL)
+	printk("CLOCK.LFCLK.RUN before stop: 0x%08x\n", NRF_CLOCK->LFCLK.RUN);
+#endif
+	NRF_CLOCK->TASKS_LFCLKSTOP = 1;
+	while (NRF_CLOCK->LFCLK.RUN) {
+	}
+#if defined(CONFIG_SERIAL)
+	printk("CLOCK.LFCLK.RUN after stop: 0x%08x\n", NRF_CLOCK->LFCLK.RUN);
+#endif
+}
+#endif
+
+#if defined(CONFIG_NRF7120_CLOCK_LFCLK_SOURCE_LFRC)
+static void configure_clock_lfclk_source_lfrc(void)
+{
+#if defined(CONFIG_SERIAL)
+	printk("CLOCK.LFCLK.SRC before: 0x%08x RUN=0x%08x\n", NRF_CLOCK->LFCLK.SRC,
+	       NRF_CLOCK->LFCLK.RUN);
+#endif
+	NRF_CLOCK->TASKS_LFCLKSTOP = 1;
+	while (NRF_CLOCK->LFCLK.RUN) {
+	}
+
+	NRF_CLOCK->LFCLK.SRC = CLOCK_LFCLK_SRC_SRC_LFRC;
+	NRF_CLOCK->TASKS_LFCLKSTART = 1;
+	while (!NRF_CLOCK->LFCLK.RUN) {
+	}
+
+#if defined(CONFIG_SERIAL)
+	printk("CLOCK.LFCLK.SRC after: 0x%08x RUN=0x%08x\n", NRF_CLOCK->LFCLK.SRC,
+	       NRF_CLOCK->LFCLK.RUN);
+#endif
+}
+#endif
+
 static void configure_ram(void)
 {
 #if defined(CONFIG_NRF7120_RAM_128K_ONLY)
@@ -322,6 +472,14 @@ int main(void)
 	}
 #endif
 
+#if defined(CONFIG_NRF7120_CLOCK_LFCLK_STOP)
+	configure_clock_lfclk_stop();
+#endif
+
+#if defined(CONFIG_NRF7120_CLOCK_LFCLK_SOURCE_LFRC)
+	configure_clock_lfclk_source_lfrc();
+#endif
+
 	configure_ram();
 
 #if defined(CONFIG_NRF7120_PDSELECT_DIAGNOSTICS)
@@ -330,6 +488,30 @@ int main(void)
 
 #if defined(CONFIG_NRF7120_WIFI_AUTOCGCORE_CLEAR)
 	clear_wifi_autocgcore();
+#endif
+
+#if defined(CONFIG_NRF7120_LDOHLP0V8_HELPER_ZERO)
+	configure_ldohlp0v8_helper_zero();
+#endif
+
+#if defined(CONFIG_NRF7120_VDETAO0V8_BROWNOUTLP_LOWER)
+	configure_vdetao0v8_brownoutlp_lower();
+#endif
+
+#if defined(CONFIG_NRF7120_HVBUCK_VOLTAGECTRL_MANUAL)
+	configure_hvbuck_voltagectrl_manual();
+#endif
+
+#if defined(CONFIG_NRF7120_HVBUCK_FORCE_LP)
+	configure_hvbuck_force_lp();
+#endif
+
+#if defined(CONFIG_NRF7120_REGULATORS_ELVCONFIG_ZERO)
+	configure_regulators_elvconfig_zero();
+#endif
+
+#if defined(CONFIG_NRF7120_ELVCONFIG_GRTC_PWM_CLKOUT_CLEAR)
+	configure_elvconfig_grtc_pwm_clkout_clear();
 #endif
 
 #if defined(CONFIG_NRF7120_FORCE_LOWPWR)
@@ -345,6 +527,12 @@ int main(void)
 
 #if defined(CONFIG_NRF7120_SLEEP_FOREVER)
 	k_sleep(K_FOREVER);
+#endif
+
+#if defined(CONFIG_NRF7120_QUIET_PERIODIC_SLEEP)
+	while (true) {
+		k_sleep(IDLE_TIME);
+	}
 #endif
 
 	return 0;

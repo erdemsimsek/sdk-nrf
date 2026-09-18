@@ -26,3 +26,15 @@ tests:
   nrf.extended.sample.boards.nrf.system_on_idle.quiet_pdmcu:
     extra_args:
       - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/force_lowpwr.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.hvbuck_voltagectrl_manual:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/quiet.conf;configs/ram_128k.conf;configs/sleep_forever.conf;configs/sloppy_idle.conf;configs/hvbuck_voltagectrl_manual.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.hvbuck_force_lp:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/wifi_autocgcore_clear.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/hvbuck_force_lp.conf"
+
+  nrf.extended.sample.boards.nrf.system_on_idle.elvconfig_zero:
+    extra_args:
+      - EXTRA_CONF_FILE="configs/ram_128k.conf;configs/diagnostics.conf;configs/force_lowpwr.conf;configs/pd_mcu.conf;configs/idle_phase_marker.conf;configs/elvconfig_zero.conf"

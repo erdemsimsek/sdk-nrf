@@ -92,6 +92,162 @@ config NRF7120_SLEEP_FOREVER
 	  periodic application timeout. Use for quiet, stable current
 	  measurements (combine with configs/quiet.conf).
 
+config NRF7120_QUIET_PERIODIC_SLEEP
+	bool "Repeat a bounded k_sleep forever, with no diagnostics/console at all"
+	depends on SOC_NRF7120 && !SERIAL
+	help
+	  Loops "k_sleep(K_SECONDS(CONFIG_NRF7120_IDLE_SECONDS))" forever, with
+	  no printing, no console suspend/resume, and no P0.00 marker (that
+	  requires SERIAL). Exists to isolate one specific variable: does
+	  periodic, bounded waking -- on its own, with none of the diagnostics-
+	  build's console/print/GPIO-marker activity around each wake -- still
+	  prevent reaching ELV, or was that activity itself the confound in
+	  earlier cyclic-diagnostics captures? Combine with
+	  configs/quiet.conf and a PDSELECT signal (PDSELECT does not require
+	  SERIAL) to observe the result without any of that overhead.
+
+config NRF7120_IDLE_SECONDS
+	int "Idle duration in seconds, for the timed loop and NRF7120_QUIET_PERIODIC_SLEEP"
+	depends on SOC_NRF7120
+	range 1 3600
+	default 5
+	help
+	  Shared duration for both the SERIAL timed-loop's k_sleep and
+	  NRF7120_QUIET_PERIODIC_SLEEP's loop. Default 5 matches every prior
+	  capture this session; raise it to test whether a longer, still-
+	  bounded (not permanent) idle window is enough to reach ELV, as
+	  opposed to needing an untimed k_sleep(K_FOREVER).
+
+config NRF7120_HVBUCK_VOLTAGECTRL_MANUAL
+	bool "Repoint LP hyst voltage target to VOUT0V65 (datasheet Manual mode)"
+	depends on SOC_NRF7120
+	help
+	  Write HVBUCK.VOLTAGECTRL to 1 once at boot. The datasheet documents
+	  this register as: "0: Auto. Voltage level is selected automatically
+	  between VOUT0V65, VOUT0V8 and VOUT1V1. 1: Manual. HP hyst voltage
+	  level is always VOUT0V8. LP hyst voltage level is always VOUT0V65."
+	  MODECTRL is left in Auto, so the existing HP<->LP<->HP bounce
+	  documented in NRF7120_HVBUCK_HP_MODE_OBSERVATION.md still happens on
+	  its own -- but LPHyst now targets VOUT0V65 (~0.675 V on this
+	  device) instead of VOUT0V8LP (0.85 V, ROM-programmed equal to
+	  VOUT0V8HP), making any real LP dwell visible on a scope for the
+	  first time.
+
+config NRF7120_VDETAO0V8_BROWNOUTLP_LOWER
+	bool "Lower the LP-rail brownout detector threshold"
+	depends on SOC_NRF7120
+	help
+	  Write VDETAO0V8.CONFIG.BROWNOUTLP (reset 0x32) to 0x03 before any
+	  voltage-lowering HVBUCK write. This register's exact mV-per-code
+	  mapping is not documented in the shipped ENGA headers; 0x03 is used
+	  here only because it is the exact value proven, on a second nRF7120
+	  device, not to trip a brownout reset while sustaining a lowered
+	  buck output. Automatically enabled by NRF7120_HVBUCK_FORCE_LP; can
+	  also be built alone to inspect the register.
+
+config NRF7120_LDOHLP0V8_HELPER_ZERO
+	bool "Zero the HP-mode helper LDO output code"
+	depends on SOC_NRF7120
+	help
+	  Write LDOHLP0V8.VOUTHPHELPER (reset 0x27) to 0. Part of a proven
+	  working recipe, from a second nRF7120 device, for reaching a
+	  genuinely low HVBUCK output; the helper LDO is understood to assist
+	  HP mode specifically and is zeroed before leaving HP mode.
+	  Automatically enabled by NRF7120_HVBUCK_FORCE_LP; can also be built
+	  alone to inspect the register.
+
+config NRF7120_HVBUCK_FORCE_LP
+	bool "Force HVBUCK into LP hyst mode targeting VOUT0V65 (proven recipe)"
+	depends on SOC_NRF7120
+	select NRF7120_VDETAO0V8_BROWNOUTLP_LOWER
+	select NRF7120_LDOHLP0V8_HELPER_ZERO
+	help
+	  Replicates, in this exact order, a recipe already proven on a
+	  second nRF7120 device to reach a genuinely low (~0.63 V) HVBUCK
+	  output: zero LDOHLP0V8.VOUTHPHELPER, lower
+	  VDETAO0V8.CONFIG.BROWNOUTLP, program HVBUCK.VOUT0V65 (see
+	  NRF7120_HVBUCK_VOUT0V65_CODE), set HVBUCK.VOLTAGECTRL to Manual (1),
+	  then force HVBUCK.MODECTRL to LP hyst (1), bypassing the Auto FSM's
+	  HP<->LP<->HP bounce-back entirely (see
+	  NRF7120_HVBUCK_HP_MODE_OBSERVATION.md).
+	  This is one-shot per boot and not reversible except by a
+	  power-cycle/reflash. On this ENGA unit, whether HVBUCK actually
+	  reaches and holds this state -- matching the second device -- is
+	  the experiment itself, not a known-good outcome.
+
+config NRF7120_HVBUCK_VOUT0V65_CODE
+	int "HVBUCK.VOUT0V65 voltage code written by NRF7120_HVBUCK_FORCE_LP"
+	depends on NRF7120_HVBUCK_FORCE_LP
+	range 0 31
+	default 2
+	help
+	  Voltage code for HVBUCK.VOUT0V65, using the confirmed
+	  0.6 V + code x 25 mV formula. The default, 2 (0.65 V), matches the
+	  value proven on a second nRF7120 device.
+
+config NRF7120_REGULATORS_ELVCONFIG_ZERO
+	bool "Write REGULATORS.ELVCONFIG to zero"
+	depends on SOC_NRF7120
+	help
+	  Write REGULATORS.ELVCONFIG (observed as 0x00c60000 on this device)
+	  to 0x00000000, clearing DISABLEELV and every ELVPD*/ELVLF*/ELVGRTC*
+	  block bit. Independent, simpler experiment: with PD_LP/PD_PERIPH
+	  already confirmed released during idle, this checks whether any
+	  other bit in this register is still blocking an ELV transition.
+
+config NRF7120_ELVCONFIG_GRTC_PWM_CLKOUT_CLEAR
+	bool "Clear only ELVCONFIG.ELVGRTCPWM and ELVGRTCCLKOUT (Jon Harrison's test)"
+	depends on SOC_NRF7120
+	help
+	  Isolated test suggested by Jon Harrison: our k_sleep() wake path
+	  runs on GRTC (CONFIG_NRF_GRTC_TIMER=y), and REGULATORS.ELVCONFIG
+	  bits 22 (ELVGRTCPWM) and 23 (ELVGRTCCLKOUT) currently read as 1
+	  ("Prevent") in the observed 0x00c60000 -- if GRTC's PWM or clock-
+	  output sub-feature is active or appears active, these two bits
+	  could be blocking ELV independent of the domain-power bits already
+	  investigated. Unlike NRF7120_REGULATORS_ELVCONFIG_ZERO (which
+	  clears the whole register, including these two bits, and already
+	  showed no change to the HP<->LP bounce -- see
+	  NRF7120_HVBUCK_HP_MODE_OBSERVATION.md), this clears *only* bits 22
+	  and 23, leaving every other bit -- including the currently-1
+	  ELVPDLP/ELVPDPERIPH -- exactly as read, isolating this one
+	  specific variable.
+
+config NRF7120_CLOCK_LFCLK_STOP
+	bool "Stop the shared system LFCLK (Jon Harrison's follow-up test)"
+	depends on SOC_NRF7120
+	help
+	  Triggers CLOCK.TASKS_LFCLKSTOP and busy-waits for CLOCK.LFCLK.RUN to
+	  read 0. Diagnostics show CLK_LF RUN=1 while ALWAYSRUN=0, meaning
+	  something other than an "always run" request keeps the shared
+	  system LFCLK running; Jon's hypothesis is that this, independent
+	  of GRTC's own CLKSEL, could still be blocking ELV. Intended to be
+	  combined with CONFIG_NRF_GRTC_TIMER_SOURCE_LFLPRC (see
+	  configs/grtc_source_lflprc.conf) so GRTC no longer needs the
+	  shared clock before this stops it.
+	  WARNING: the wait loop is unbounded. If CLOCK.LFCLK.RUN never
+	  drops to 0, the device hangs here -- before "Entering System ON
+	  idle" ever prints, a different and earlier hang than
+	  NRF7120_HVBUCK_FORCE_LP's. One-shot, not reversible except by
+	  power-cycle/reflash.
+
+config NRF7120_CLOCK_LFCLK_SOURCE_LFRC
+	bool "Switch the shared system LFCLK source to LFRC (Jon Harrison's lead)"
+	depends on SOC_NRF7120
+	help
+	  Stops the running LFCLK (CLOCK.TASKS_LFCLKSTOP, wait for RUN=0),
+	  writes CLOCK.LFCLK.SRC to LFRC (0 -- confirmed via the MDK enum,
+	  correcting an earlier mix-up: SRC=1 is LFXO, not LFRC, and that is
+	  what this device actually runs on by default), then restarts it
+	  (CLOCK.TASKS_LFCLKSTART, wait for RUN=1). Jon's sim showed ELV is
+	  entered automatically while LFCLK runs on LFRC, without needing
+	  NRF7120_CLOCK_LFCLK_STOP's "stop and leave it off" workaround --
+	  this tests that directly on real silicon, with LFCLK left running
+	  throughout, not stopped.
+	  WARNING: both wait loops are unbounded, symmetric to
+	  NRF7120_CLOCK_LFCLK_STOP's hang risk -- one on stopping, one on
+	  restarting. One-shot, not reversible except by power-cycle/reflash.
+
 config NRF7120_WIFI_AUTOCGCORE_CLEAR
 	bool "Apply the WZN-9779 Wi-Fi clock workaround"
 	depends on SOC_NRF7120
