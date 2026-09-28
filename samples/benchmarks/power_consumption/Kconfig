@@ -107,4 +107,23 @@ config SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PWR_ABOVE_ELV
 
 endchoice
 
+config SAMPLE_POWER_CONSUMPTION_MRAM_POWERDOWN_TEST
+	bool "Test MRAMC.POWER.INIT PowerDownTrimRet (Paul's MRAM hypothesis)"
+	depends on SOC_NRF7120 && SERIAL
+	help
+	  Prints MRAMC.POWER.AUTOPOWERDOWN (to check whether west
+	  flash/nrfutil leaves MRAM's automatic power-down disabled -- reset
+	  default is Disabled, and nothing in this Zephyr tree's boot path
+	  ever enables it for this SoC), then writes MRAMC.POWER.INIT with
+	  MODE=PowerDownTrimRet and KEY=Enable (0xA66D, required for the
+	  write to be honored at all).
+
+	  WARNING: nRF7120 executes code directly out of MRAM (XIP) --
+	  zephyr,flash and zephyr,code-partition both point into this same
+	  MRAM region. This write, and every instruction after it, must
+	  itself be fetched from MRAM. If the hardware does not
+	  transparently stall/resume bus access across the power-down
+	  transition, the device will hang or crash the instant power-down
+	  completes. That is the deliberate point of this test.
+
 source "Kconfig.zephyr"

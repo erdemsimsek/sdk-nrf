@@ -13,6 +13,10 @@
 #include <ram_pwrdn.h>
 #endif
 
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_MRAM_POWERDOWN_TEST)
+#include <hal/nrf_mramc.h>
+#endif
+
 #define IDLE_TIME K_SECONDS(CONFIG_SAMPLE_POWER_CONSUMPTION_IDLE_SECONDS)
 
 /*
@@ -65,6 +69,37 @@ static void configure_pdselect(void)
 }
 #endif
 
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_MRAM_POWERDOWN_TEST)
+#define NRF7120_HVBUCK_BASE	   0x5012D000UL
+#define NRF7120_HVBUCK_STATUS_ADDR (NRF7120_HVBUCK_BASE + 0x400U)
+
+static void test_mram_powerdown(void)
+{
+	nrf_mramc_power_autopowerdown_t autopowerdown;
+
+	nrf_mramc_power_autopowerdown_get(NRF_MRAMC, &autopowerdown);
+	printk("MRAMC.POWER.AUTOPOWERDOWN: enable=%u power_down_cfg=%u timeout_value=%u\n",
+	       autopowerdown.enable, autopowerdown.power_down_cfg, autopowerdown.timeout_value);
+	printk("MRAMC.POWER.STATUS before=0x%08x HVBUCK.STATUS before=0x%08x\n",
+	       NRF_MRAMC->POWER.STATUS, *(volatile uint32_t *)NRF7120_HVBUCK_STATUS_ADDR);
+
+	/* WARNING: nRF7120 executes code directly out of MRAM (XIP) --
+	 * zephyr,flash/zephyr,code-partition both point into this same MRAM
+	 * region. This write, and every instruction after it (including the
+	 * printk below), must itself be fetched from MRAM -- if the hardware
+	 * does not transparently stall/resume bus access across the
+	 * power-down transition, the device hangs or crashes the instant
+	 * power-down completes. That is the deliberate point of this test:
+	 * either outcome is real, useful data about MRAM's behavior during
+	 * a power transition.
+	 */
+	nrf_mramc_power_init_set(NRF_MRAMC, NRF_MRAMC_POWER_INIT_MODE_DOWN_TRIM_RET);
+
+	printk("MRAMC.POWER.STATUS after=0x%08x HVBUCK.STATUS after=0x%08x\n",
+	       NRF_MRAMC->POWER.STATUS, *(volatile uint32_t *)NRF7120_HVBUCK_STATUS_ADDR);
+}
+#endif
+
 static void configure_ram_retention(void)
 {
 #if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_RAM_RETAIN_UNUSED_ONLY)
@@ -113,6 +148,10 @@ int main(void)
 
 #if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_DIAGNOSTICS)
 	configure_pdselect();
+#endif
+
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_MRAM_POWERDOWN_TEST)
+	test_mram_powerdown();
 #endif
 
 #if defined(CONFIG_SERIAL)
