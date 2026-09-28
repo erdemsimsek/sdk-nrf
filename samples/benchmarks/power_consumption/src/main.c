@@ -402,6 +402,17 @@ int main(void)
 
 		wakeups++;
 		printk("Woken up %u time(s)\n", wakeups);
+
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_POWER_SNAPSHOT_DIAGNOSTICS)
+		/* The "boot" snapshot is taken before the very first k_sleep()
+		 * -- HVBUCK is still in plain HPHyst either way at that point,
+		 * regardless of whether this run ends up stuck or clean. If
+		 * the actual difference only becomes register-visible once a
+		 * real idle/ULV transition has been attempted, this is where
+		 * it would show up instead.
+		 */
+		print_power_snapshot("post-idle");
+#endif
 #endif
 	}
 
