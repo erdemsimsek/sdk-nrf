@@ -36,6 +36,33 @@ static void clear_wifi_autocgcore(void)
 	*autocg1 &= ~NRF7120_WIFI_AUTOCGCORE_MASK;
 }
 
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_DIAGNOSTICS)
+/*
+ * Write SREGS30.PDSELECT.PIN1 to route the selected power-domain status
+ * signal to P0.10, matching the signal numbering used elsewhere for this
+ * SoC's PDSELECT mux: 2 PD_LP, 3 PD_PERIPH, 4 PD_MCU, 7 PD_WIFI. PIN0/P0.09
+ * is left disabled (0).
+ */
+#define NRF7120_SREGS30_BASE	      0x5010F000UL
+#define NRF7120_SREGS30_PDSELECT_ADDR (NRF7120_SREGS30_BASE + 0x780U)
+
+static void configure_pdselect(void)
+{
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_LP)
+	uint32_t signal = 2U;
+#elif defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_PERIPH)
+	uint32_t signal = 3U;
+#elif defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_MCU)
+	uint32_t signal = 4U;
+#elif defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_WIFI)
+	uint32_t signal = 7U;
+#endif
+	volatile uint32_t *const pdselect = (volatile uint32_t *)NRF7120_SREGS30_PDSELECT_ADDR;
+
+	*pdselect = (signal & 0xFU) << 4;
+}
+#endif
+
 static void configure_ram_retention(void)
 {
 #if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_RAM_RETAIN_UNUSED_ONLY)
@@ -81,6 +108,10 @@ int main(void)
 
 	clear_wifi_autocgcore();
 	configure_ram_retention();
+
+#if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_PDSELECT_DIAGNOSTICS)
+	configure_pdselect();
+#endif
 
 #if defined(CONFIG_SERIAL)
 	uint32_t wakeups = 0;

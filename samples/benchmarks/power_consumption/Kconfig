@@ -73,4 +73,35 @@ config SAMPLE_POWER_CONSUMPTION_RAM_RETAIN_UNUSED_ONLY
 
 endchoice
 
+config SAMPLE_POWER_CONSUMPTION_PDSELECT_DIAGNOSTICS
+	bool "Route a power-domain status signal to P0.10"
+	depends on SOC_NRF7120
+	help
+	  Write SREGS30.PDSELECT.PIN1 to route the selected internal
+	  power-domain status signal to P0.10, for external monitoring
+	  (e.g. a logic analyzer) during idle. Off by default -- this is a
+	  diagnostic aid, not part of the shipped power-consumption
+	  behavior.
+
+choice SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL
+	prompt "P0.10 PDSELECT signal"
+	depends on SAMPLE_POWER_CONSUMPTION_PDSELECT_DIAGNOSTICS
+	default SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_LP
+	help
+	  Which internal power-domain status signal to route to P0.10.
+
+config SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_LP
+	bool "PD_LP"
+
+config SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_PERIPH
+	bool "PD_PERIPH"
+
+config SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_MCU
+	bool "PD_MCU"
+
+config SAMPLE_POWER_CONSUMPTION_PDSELECT_SIGNAL_PD_WIFI
+	bool "PD_WIFI"
+
+endchoice
+
 source "Kconfig.zephyr"
