@@ -126,4 +126,23 @@ config SAMPLE_POWER_CONSUMPTION_MRAM_POWERDOWN_TEST
 	  transition, the device will hang or crash the instant power-down
 	  completes. That is the deliberate point of this test.
 
+	  Polls and prints POWER.STATUS (and HVBUCK.STATUS) five times, 10 ms
+	  apart, after the write -- a single before/after snapshot previously
+	  caught the transition still in progress (PowerDownSeq, not yet the
+	  final OffTrimRetain).
+
+config SAMPLE_POWER_CONSUMPTION_POWER_SNAPSHOT_DIAGNOSTICS
+	bool "Print a comprehensive power/clock/analog-macro register snapshot"
+	depends on SOC_NRF7120 && SERIAL
+	help
+	  Prints HVBUCK, LFXO (including EVENTS_ERRORSTARTING/
+	  EVENTS_ERRORRUNNING), REGULATORS, CLOCK, SAADC, OSCRFR, VDETAO0V8,
+	  and LDOHLP0V8 registers once at boot -- reusing every address
+	  already proven in the system_on_idle diagnostic sample. Off by
+	  default; this is a diagnostic aid for comparing register state
+	  between a just-flashed run and a genuinely power-cycled run, to
+	  find which specific analog macro (if any) is left in an
+	  intermediate/limbo state by west flash -- not part of the shipped
+	  power-consumption behavior.
+
 source "Kconfig.zephyr"
