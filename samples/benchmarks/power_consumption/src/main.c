@@ -15,6 +15,27 @@
 
 #define IDLE_TIME K_SECONDS(CONFIG_SAMPLE_POWER_CONSUMPTION_IDLE_SECONDS)
 
+/*
+ * WZN-9779: this bit is a source of a prolonged Wi-Fi core-clock
+ * request (observed even after debugger disconnect), which keeps
+ * HVBUCK from settling into its lowest-power state during idle.
+ */
+#define NRF7120_WIFI_RPUPBUS_BASE		 0x48080000UL
+#define NRF7120_WIFI_CLOCKRESETCTRL_OFFSET	 0x1B000UL
+#define NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_OFFSET 0x160UL
+#define NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_ADDR                                                    \
+	(NRF7120_WIFI_RPUPBUS_BASE + NRF7120_WIFI_CLOCKRESETCTRL_OFFSET +                          \
+	 NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_OFFSET)
+#define NRF7120_WIFI_AUTOCGCORE_MASK (1UL << 28)
+
+static void clear_wifi_autocgcore(void)
+{
+	volatile uint32_t *const autocg1 =
+		(volatile uint32_t *)NRF7120_WIFI_CLOCKGATECTRLAUTOCG1_ADDR;
+
+	*autocg1 &= ~NRF7120_WIFI_AUTOCGCORE_MASK;
+}
+
 static void configure_ram_retention(void)
 {
 #if defined(CONFIG_SAMPLE_POWER_CONSUMPTION_RAM_RETAIN_UNUSED_ONLY)
@@ -58,6 +79,7 @@ int main(void)
 	       "power consumption readings.\n\n");
 #endif
 
+	clear_wifi_autocgcore();
 	configure_ram_retention();
 
 #if defined(CONFIG_SERIAL)
