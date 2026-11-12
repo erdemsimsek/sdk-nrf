@@ -4,19 +4,6 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-/*
- * Memory map with the MCUboot secondary slot placed in the external
- * MX25U25645G flash connected to MSPI00:
- *
- * MRAM:
- *   0x0000_0000 MCUboot (64 KB)
- *   0x0001_0000 Primary image slot (3008 KB)
- *   0x0030_0000 Storage (36 KB)
- *
- * External flash:
- *   0x0000_0000 Secondary image slot (3008 KB)
- */
-
 /delete-node/ &boot_partition;
 /delete-node/ &slot0_partition;
 /delete-node/ &slot1_partition;

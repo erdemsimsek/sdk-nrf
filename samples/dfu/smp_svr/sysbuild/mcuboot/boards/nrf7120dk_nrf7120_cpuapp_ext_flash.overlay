@@ -4,10 +4,22 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include "../../../dts/nrf7120dk_nrf7120_ext_flash.dtsi"
+#include "../../../dts/nrf7120dk_nrf7120_memory_map_ext_flash.dtsi"
 
 / {
 	chosen {
 		zephyr,code-partition = &boot_partition;
 	};
+};
+
+&spi00 {
+	status = "disabled";
+};
+
+&mspi00 {
+	status = "okay";
+};
+
+&mx25u25645g {
+	status = "okay";
 };
