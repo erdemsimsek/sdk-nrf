@@ -22,10 +22,9 @@
 	};
 };
 
-&cpuapp_sram {
+&cpuapp_sram_app {
 	/* Reserve two aligned 32 KiB sections for the retention test. */
-	reg = <0x20000000 DT_SIZE_K(128)>;
-	ranges = <0x0 0x20000000 DT_SIZE_K(128)>;
+	reg = <NRF7120_SRAM_APP_START (DT_SIZE_K(128) - NRF7120_SRAM_APP_START)>;
 };
 
 &gpio4 {
