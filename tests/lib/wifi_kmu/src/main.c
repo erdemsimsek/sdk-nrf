@@ -89,7 +89,7 @@ static void clear_wifi_kmu_keys(void)
 ZTEST(wifi_kmu, test_key_writes)
 {
 	int err = -EINVAL;
-	uint8_t key_buffer[MAX_KEY_SIZE] = {0};
+	static uint8_t key_buffer[MAX_KEY_SIZE];
 
 	clear_wifi_kmu_keys();
 
