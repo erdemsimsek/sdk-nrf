@@ -17,6 +17,8 @@ config TEST_NRFX_HF_CLOCK_DRIVER
 	default y if SOC_NRF54LS05B
 	default y if SOC_NRF54LV10A
 	default y if SOC_NRF54LC10A
+	default y if SOC_NRF7120
+	default y if SOC_NRF7120E
 	select NRFX_CLOCK
 
 config TEST_CC_HF_CLOCK_DRIVER
