@@ -21,10 +21,17 @@
 #define DUT_SPI_NODE	    DT_NODELABEL(dut_spi_fast)
 #define DUT_SPI_FAST		1
 #define TEST_BUFFER_SIZE    4
-#define MX25R64_RDID	    0x9F
-#define MX25R64_MFG_ID	    0xC2
-#define MX25R64_MEM_TYPE    0x28
-#define MX25R64_MEM_DENSITY 0x17
+#define FLASH_RDID	    0x9F
+#define FLASH_MFG_ID	    0xC2
+#if defined(CONFIG_SOC_SERIES_NRF71)
+/* MX25U25645G on the nRF7120 DK */
+#define FLASH_MEM_TYPE	    0x25
+#define FLASH_MEM_DENSITY   0x39
+#else
+/* MX25R64 */
+#define FLASH_MEM_TYPE	    0x28
+#define FLASH_MEM_DENSITY   0x17
+#endif
 #define MAX_READ_REPEATS    10
 #else
 #define DUT_SPI_NODE	 DT_NODELABEL(dut_spi)
@@ -172,7 +179,7 @@ ZTEST(spim_pan, test_spim_mltpan_57_workaround)
 	uint32_t spim_event;
 
 	memset(tx_buffer, 0xFF, TEST_BUFFER_SIZE);
-	tx_buffer[0] = MX25R64_RDID;
+	tx_buffer[0] = FLASH_RDID;
 
 	timer_task = configure_test_timer(&test_timer);
 	spim_event = nrf_spim_event_address_get(spim_reg, NRF_SPIM_EVENT_END);
@@ -207,12 +214,12 @@ ZTEST(spim_pan, test_spim_mltpan_57_workaround)
 		}
 
 		/* First RX byte is dummy */
-		zassert_equal(rx_buffer[1], MX25R64_MFG_ID,
-			      "Read MX25R64 device ID is different than expected\n");
-		zassert_equal(rx_buffer[2], MX25R64_MEM_TYPE,
-			      "Read MX25R64 memory type is different than expected\n");
-		zassert_equal(rx_buffer[3], MX25R64_MEM_DENSITY,
-			      "Read MX25R64 memory density is different than expected\n");
+		zassert_equal(rx_buffer[1], FLASH_MFG_ID,
+			      "Read flash device ID is different than expected\n");
+		zassert_equal(rx_buffer[2], FLASH_MEM_TYPE,
+			      "Read flash memory type is different than expected\n");
+		zassert_equal(rx_buffer[3], FLASH_MEM_DENSITY,
+			      "Read flash memory density is different than expected\n");
 	}
 
 	nrfx_timer_uninit(&test_timer);
@@ -304,6 +311,10 @@ ZTEST(spim_pan, test_spim_hmpan_115_workaround)
 	TC_PRINT("SPIM prescaler: %u\n", spim_reg->PRESCALER);
 	zassert_true(spim_reg->PRESCALER > 2, "SPIM prescaler is not greater than 2\n");
 	zassert_ok(err, "SPI transceive failed: %d\n", err);
+	if (IS_ENABLED(CONFIG_SOC_SERIES_NRF71) && IS_ENABLED(DUT_SPI_FAST)) {
+		/* The fast SPIM is connected to the external flash, not looped back. */
+		return;
+	}
 	zassert_mem_equal(tx_buffer, rx_buffer, TEST_BUFFER_SIZE, "TX buffer != RX buffer\n");
 }
 
