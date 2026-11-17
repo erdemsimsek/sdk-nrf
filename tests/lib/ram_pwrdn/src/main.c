@@ -59,9 +59,9 @@ static volatile uint32_t *unused_ram_word(void)
 }
 
 #if DT_NODE_EXISTS(DT_NODELABEL(ipc_shm_area_cpuapp_cpuuma))
-/* The nRF7120 DK describes the Wi-Fi IPC shared memory as a /reserved-memory child, so it must stay
- * powered. It belongs to another core, so it is only read. A non-zero word is used as the probe,
- * so that a loss of content is detectable before power-up.
+/* The Wi-Fi IPC shared memory of the nRF7120 DK must stay powered. It belongs to another core, so
+ * it is only read. A non-zero word is used as the probe, so that a loss of content is detectable
+ * before power-up.
  */
 #define IPC_SHM_NODE DT_NODELABEL(ipc_shm_area_cpuapp_cpuuma)
 
